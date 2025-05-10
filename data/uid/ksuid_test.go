@@ -13,7 +13,7 @@ import (
 )
 
 func TestNewString(t *testing.T) {
-	v := NewString()
+	v := NewKSUIDString()
 	if len(v) != 27 {
 		t.Fatal("Expected 27 characters, got", len(v))
 	}
@@ -352,7 +352,7 @@ func BenchmarkAppend(b *testing.B) {
 }
 
 func BenchmarkString(b *testing.B) {
-	k := New()
+	k := NewKSUID()
 
 	for i := 0; i != b.N; i++ {
 		_ = k.String()

@@ -1,0 +1,6 @@
+.
+├── internal
+│   └── myapp
+│       └── logic.go
+├── README.md
+└── main.go

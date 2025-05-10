@@ -21,7 +21,7 @@ import (
 // Uses the randomness pool if it was enabled with EnableRandPool.
 // On error, NewV7 returns Nil and an error
 func NewV7() (UUID, error) {
-	uuid, err := NewRandom()
+	uuid, err := NewRandomUUID()
 	if err != nil {
 		return uuid, err
 	}

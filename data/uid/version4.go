@@ -10,16 +10,16 @@ import "io"
 // the expression
 //
 //	uuid.MustUUID(uuid.NewRandom())
-func NewKSUID() UUID {
-	return MustUUID(NewRandom())
+func NewUUID() UUID {
+	return MustUUID(NewRandomUUID())
 }
 
 // NewString creates a new random UUID and returns it as a string or panics.
 // NewString is equivalent to the expression
 //
 //	uuid.New().String()
-func NewKSUIDString() string {
-	return MustUUID(NewRandom()).String()
+func NewUUIDString() string {
+	return MustUUID(NewRandomUUID()).String()
 }
 
 // NewRandom returns a Random (Version 4) UUID.
@@ -36,7 +36,7 @@ func NewKSUIDString() string {
 //	means the probability is about 0.00000000006 (6 × 10−11),
 //	equivalent to the odds of creating a few tens of trillions of UUIDs in a
 //	year and having one duplicate.
-func NewRandomKSUID() (UUID, error) {
+func NewRandomUUID() (UUID, error) {
 	if !poolEnabled {
 		return NewRandomFromReader(rander)
 	}

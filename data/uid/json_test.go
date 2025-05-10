@@ -6,6 +6,7 @@ package uid
 
 import (
 	"encoding/json"
+	"errors"
 	"reflect"
 	"testing"
 )
@@ -72,7 +73,7 @@ func TestJSONUnmarshal(t *testing.T) {
 	for name, tc := range testCases {
 		t.Run(name, func(t *testing.T) {
 			var s S
-			if err := json.Unmarshal(tc.data, &s); err != tc.expectedError {
+			if err := json.Unmarshal(tc.data, &s); !errors.Is(err, tc.expectedError) {
 				t.Errorf("unexpected error: got %v, want %v", err, tc.expectedError)
 			}
 			if !reflect.DeepEqual(s.ID1, tc.expectedResult) {

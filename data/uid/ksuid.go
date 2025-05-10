@@ -76,7 +76,7 @@ func (k KSUID) MarshalBinary() ([]byte, error) {
 }
 
 func (k *KSUID) UnmarshalText(b []byte) error {
-	id, err := Parse(string(b))
+	id, err := ParseKSUID(string(b))
 	if err != nil {
 		return err
 	}
@@ -85,7 +85,7 @@ func (k *KSUID) UnmarshalText(b []byte) error {
 }
 
 func (k *KSUID) UnmarshalBinary(b []byte) error {
-	id, err := FromBytes(b)
+	id, err := FromKSUIDBytes(b)
 	if err != nil {
 		return err
 	}
@@ -187,7 +187,7 @@ func NewKSUIDString() string {
 	return NewKSUID().String()
 }
 
-func FromParts(t time.Time, payload []byte) (KSUID, error) {
+func FromKSUIDParts(t time.Time, payload []byte) (KSUID, error) {
 	if len(payload) != payloadLengthInBytes {
 		return NilKSUID, errPayloadSize
 	}
@@ -197,15 +197,15 @@ func FromParts(t time.Time, payload []byte) (KSUID, error) {
 	return id, nil
 }
 
-func FromPartsOrNil(t time.Time, payload []byte) KSUID {
-	id, err := FromParts(t, payload)
+func FromKSUIDPartsOrNil(t time.Time, payload []byte) KSUID {
+	id, err := FromKSUIDParts(t, payload)
 	if err != nil {
 		return NilKSUID
 	}
 	return id
 }
 
-func FromBytes(b []byte) (KSUID, error) {
+func FromKSUIDBytes(b []byte) (KSUID, error) {
 	if len(b) != byteLength {
 		return NilKSUID, errSize
 	}
@@ -214,15 +214,15 @@ func FromBytes(b []byte) (KSUID, error) {
 	return id, nil
 }
 
-func FromBytesOrNil(b []byte) KSUID {
-	id, err := FromBytes(b)
+func FromKSUIDBytesOrNil(b []byte) KSUID {
+	id, err := FromKSUIDBytes(b)
 	if err != nil {
 		return NilKSUID
 	}
 	return id
 }
 
-func Parse(s string) (KSUID, error) {
+func ParseKSUID(s string) (KSUID, error) {
 	if len(s) != stringEncodedLength {
 		return NilKSUID, errStrSize
 	}
@@ -232,11 +232,11 @@ func Parse(s string) (KSUID, error) {
 	if err := fastDecodeBase62(dst[:], src[:]); err != nil {
 		return NilKSUID, errStrValue
 	}
-	return FromBytes(dst[:])
+	return FromKSUIDBytes(dst[:])
 }
 
 func ParseOrNil(s string) KSUID {
-	id, err := Parse(s)
+	id, err := ParseKSUID(s)
 	if err != nil {
 		return NilKSUID
 	}

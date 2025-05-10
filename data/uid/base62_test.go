@@ -78,7 +78,7 @@ func TestBase62Value(t *testing.T) {
 
 func TestFastAppendEncodeBase62(t *testing.T) {
 	for i := 0; i != 1000; i++ {
-		id := New()
+		id := NewKSUID()
 
 		b0 := id[:]
 		b1 := appendEncodeBase62(nil, b0)
@@ -97,7 +97,7 @@ func TestFastAppendEncodeBase62(t *testing.T) {
 
 func TestFastAppendDecodeBase62(t *testing.T) {
 	for i := 0; i != 1000; i++ {
-		id := New()
+		id := NewKSUID()
 		b0 := leftpad(encodeBase62(id[:]), '0', stringEncodedLength)
 
 		b1 := appendDecodeBase62(nil, []byte(string(b0))) // because it modifies the input buffer
@@ -113,7 +113,7 @@ func TestFastAppendDecodeBase62(t *testing.T) {
 
 func BenchmarkAppendEncodeBase62(b *testing.B) {
 	a := [stringEncodedLength]byte{}
-	id := New()
+	id := NewKSUID()
 
 	for i := 0; i != b.N; i++ {
 		appendEncodeBase62(a[:0], id[:])
@@ -122,7 +122,7 @@ func BenchmarkAppendEncodeBase62(b *testing.B) {
 
 func BenchmarkAppendFastEncodeBase62(b *testing.B) {
 	a := [stringEncodedLength]byte{}
-	id := New()
+	id := NewKSUID()
 
 	for i := 0; i != b.N; i++ {
 		fastAppendEncodeBase62(a[:0], id[:])
@@ -131,7 +131,7 @@ func BenchmarkAppendFastEncodeBase62(b *testing.B) {
 
 func BenchmarkAppendDecodeBase62(b *testing.B) {
 	a := [byteLength]byte{}
-	id := []byte(New().String())
+	id := []byte(NewKSUID().String())
 
 	for i := 0; i != b.N; i++ {
 		b := [stringEncodedLength]byte{}
@@ -142,7 +142,7 @@ func BenchmarkAppendDecodeBase62(b *testing.B) {
 
 func BenchmarkAppendFastDecodeBase62(b *testing.B) {
 	a := [byteLength]byte{}
-	id := []byte(New().String())
+	id := []byte(NewKSUID().String())
 
 	for i := 0; i != b.N; i++ {
 		fastAppendDecodeBase62(a[:0], id)
