@@ -3,8 +3,8 @@ package main
 import (
 	"fmt"
 
-	"github.com/inovacc/utils/v2/crypto/hashing"
-	"github.com/inovacc/utils/v2/crypto/password"
+	"github.com/inovacc/toolkit/data/algorithm/hashing"
+	"github.com/inovacc/toolkit/data/password"
 )
 
 func main() {

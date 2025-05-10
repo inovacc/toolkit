@@ -25,6 +25,8 @@ import (
 	"time"
 	// "github.com/DataDog/zstd"
 	// zstd "github.com/valyala/gozstd"
+
+	"github.com/inovacc/toolkit/compression/internal/zstd/zstd/internal/xxhash"
 )
 
 func TestNewReaderMismatch(t *testing.T) {

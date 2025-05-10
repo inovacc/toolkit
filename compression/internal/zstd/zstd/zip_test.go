@@ -5,6 +5,8 @@ import (
 	"bytes"
 	"fmt"
 	"io"
+
+	"github.com/inovacc/toolkit/compression/internal/zstd/zstd"
 )
 
 func ExampleZipCompressor() {

@@ -3,7 +3,7 @@ package encoder
 import (
 	"testing"
 
-	"github.com/inovacc/utils/v2/random/random"
+	"github.com/inovacc/toolkit/data/algorithm/random"
 )
 
 func TestWrapString(t *testing.T) {

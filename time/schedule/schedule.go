@@ -5,7 +5,7 @@ import (
 	"errors"
 	"log/slog"
 
-	cron2 "github.com/inovacc/utils/v2/time/schedule/cron"
+	cron2 "github.com/inovacc/toolkit/time/schedule/cron"
 )
 
 /*

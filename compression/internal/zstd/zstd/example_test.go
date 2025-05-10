@@ -3,6 +3,8 @@ package zstd_test
 import (
 	"bytes"
 	"fmt"
+
+	"github.com/inovacc/toolkit/compression/internal/zstd/zstd"
 )
 
 func ExampleWithEncoderDictRaw() {

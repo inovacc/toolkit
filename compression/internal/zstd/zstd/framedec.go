@@ -9,6 +9,8 @@ import (
 	"encoding/hex"
 	"errors"
 	"io"
+
+	"github.com/inovacc/toolkit/compression/internal/zstd/zstd/internal/xxhash"
 )
 
 type frameDec struct {

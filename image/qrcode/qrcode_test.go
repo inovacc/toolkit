@@ -4,7 +4,7 @@ import (
 	"testing"
 
 	"github.com/divan/txqr/qr"
-	"github.com/inovacc/utils/v2/random/random"
+	"github.com/inovacc/toolkit/data/algorithm/random"
 )
 
 func TestNewQrcode(t *testing.T) {

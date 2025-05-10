@@ -16,6 +16,9 @@ import (
 	"sync"
 	"testing"
 	"time"
+
+	"github.com/inovacc/toolkit/compression/internal/zstd/zip"
+	"github.com/inovacc/toolkit/compression/internal/zstd/zstd/internal/xxhash"
 )
 
 var testWindowSizes = []int{MinWindowSize, 1 << 16, 1 << 22, 1 << 24}

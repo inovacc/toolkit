@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/inovacc/utils/v2/time/schedule/cron"
+	"github.com/inovacc/toolkit/time/schedule/cron"
 )
 
 func main() {

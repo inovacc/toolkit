@@ -3,7 +3,7 @@ package main
 import (
 	"fmt"
 
-	"github.com/inovacc/utils/v2/data/fakeit/business/card"
+	"github.com/inovacc/toolkit/data/fakeit/business/card"
 )
 
 func main() {

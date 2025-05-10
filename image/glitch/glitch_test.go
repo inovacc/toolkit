@@ -7,7 +7,7 @@ import (
 	"path/filepath"
 	"testing"
 
-	"github.com/inovacc/utils/v2/crypto/hashing"
+	"github.com/inovacc/toolkit/data/algorithm/hashing"
 )
 
 func TestGlitchEncodeDecode(t *testing.T) {

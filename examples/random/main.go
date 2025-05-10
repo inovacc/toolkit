@@ -3,8 +3,8 @@ package main
 import (
 	"fmt"
 
-	"github.com/inovacc/utils/v2/random/password"
-	"github.com/inovacc/utils/v2/random/random"
+	"github.com/inovacc/toolkit/data/algorithm/random"
+	"github.com/inovacc/toolkit/data/password"
 )
 
 func main() {

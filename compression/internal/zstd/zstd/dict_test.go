@@ -7,6 +7,8 @@ import (
 	"os"
 	"strings"
 	"testing"
+
+	"github.com/inovacc/toolkit/compression/internal/zstd/zip"
 )
 
 func TestDecoder_SmallDict(t *testing.T) {
