@@ -13,6 +13,9 @@ import (
 	"runtime"
 	"strings"
 	"testing"
+
+	"github.com/inovacc/toolkit/compression/internal/zstd/internal/snapref"
+	"github.com/inovacc/toolkit/compression/internal/zstd/zip"
 )
 
 func testOptions(_ testing.TB) map[string][]WriterOption {

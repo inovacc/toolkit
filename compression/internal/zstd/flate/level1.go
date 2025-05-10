@@ -2,6 +2,8 @@ package flate
 
 import (
 	"fmt"
+
+	"github.com/inovacc/toolkit/compression/internal/zstd/internal/le"
 )
 
 // fastGen maintains the table for matches,

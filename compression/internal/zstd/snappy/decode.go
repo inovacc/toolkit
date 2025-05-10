@@ -6,6 +6,8 @@ package snappy
 
 import (
 	"io"
+
+	"github.com/inovacc/toolkit/compression/internal/zstd/s2"
 )
 
 var (

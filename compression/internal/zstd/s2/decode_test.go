@@ -12,6 +12,8 @@ import (
 	"runtime"
 	"strings"
 	"testing"
+
+	"github.com/inovacc/toolkit/compression/internal/zstd/zip"
 )
 
 func TestDecodeRegression(t *testing.T) {

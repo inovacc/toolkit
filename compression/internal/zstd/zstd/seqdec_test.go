@@ -10,6 +10,8 @@ import (
 	"strconv"
 	"testing"
 	"time"
+
+	"github.com/inovacc/toolkit/compression/internal/zstd/zip"
 )
 
 func TestSequenceDecsAdjustOffset(t *testing.T) {

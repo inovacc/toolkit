@@ -8,6 +8,8 @@ package flate
 import (
 	"fmt"
 	"math/bits"
+
+	"github.com/inovacc/toolkit/compression/internal/zstd/internal/le"
 )
 
 type fastEnc interface {

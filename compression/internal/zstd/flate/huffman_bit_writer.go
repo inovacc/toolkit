@@ -8,6 +8,8 @@ import (
 	"fmt"
 	"io"
 	"math"
+
+	"github.com/inovacc/toolkit/compression/internal/zstd/internal/le"
 )
 
 const (

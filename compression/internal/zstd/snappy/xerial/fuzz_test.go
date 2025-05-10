@@ -3,6 +3,9 @@ package xerial
 import (
 	"bytes"
 	"testing"
+
+	"github.com/inovacc/toolkit/compression/internal/zstd/internal/fuzz"
+	"github.com/inovacc/toolkit/compression/internal/zstd/s2"
 )
 
 func FuzzDecode(f *testing.F) {

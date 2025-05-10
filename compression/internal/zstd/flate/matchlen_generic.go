@@ -5,10 +5,12 @@ package flate
 
 import (
 	"math/bits"
+
+	"github.com/inovacc/toolkit/compression/internal/zstd/internal/le"
 )
 
 // matchLen returns the maximum common prefix length of a and b.
-// a must be the shortest of the two.
+// a must-be the shortest of the two.
 func matchLen(a, b []byte) (n int) {
 	left := len(a)
 	for left >= 8 {

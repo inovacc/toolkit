@@ -16,6 +16,8 @@ import (
 	"path/filepath"
 	"strings"
 	"testing"
+
+	"github.com/inovacc/toolkit/compression/internal/zstd/s2"
 )
 
 var (

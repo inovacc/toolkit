@@ -4,6 +4,8 @@ import (
 	"bytes"
 	"encoding/binary"
 	"errors"
+
+	"github.com/inovacc/toolkit/compression/internal/zstd/s2"
 )
 
 var (

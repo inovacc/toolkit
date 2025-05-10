@@ -9,8 +9,6 @@ import (
 	"os"
 	"strconv"
 	"testing"
-
-	"github.com/klauspost/compress/internal/fuzz"
 )
 
 // Fuzzing tweaks:
