@@ -26,7 +26,7 @@ type blockSplitterCommand struct {
 
 func initBlockSplitterCommand(self *blockSplitterCommand, alphabet_size uint, min_block_size uint, split_threshold float64, num_symbols uint, split *blockSplit, histograms *[]histogramCommand, histograms_size *uint) {
 	var max_num_blocks uint = num_symbols/min_block_size + 1
-	var max_num_types uint = brotli_min_size_t(max_num_blocks, maxNumberOfBlockTypes+1)
+	var max_num_types uint = brotliMinSizeT(max_num_blocks, maxNumberOfBlockTypes+1)
 	/* We have to allocate one more histogram than the maximum number of block
 	   types for the current histogram when the meta-block is too big. */
 	self.alphabet_size_ = alphabet_size
@@ -40,9 +40,9 @@ func initBlockSplitterCommand(self *blockSplitterCommand, alphabet_size uint, mi
 	self.block_size_ = 0
 	self.curr_histogram_ix_ = 0
 	self.merge_last_count_ = 0
-	brotli_ensure_capacity_uint8_t(&split.types, &split.types_alloc_size, max_num_blocks)
-	brotli_ensure_capacity_uint32_t(&split.lengths, &split.lengths_alloc_size, max_num_blocks)
-	self.split_.num_blocks = max_num_blocks
+	brotli_ensure_capacity_uint8_t(&split.types, &split.typesAllocSize, max_num_blocks)
+	brotli_ensure_capacity_uint32_t(&split.lengths, &split.lengthsAllocSize, max_num_blocks)
+	self.split_.numBlocks = max_num_blocks
 	*histograms_size = max_num_types
 	if histograms == nil || cap(*histograms) < int(*histograms_size) {
 		*histograms = make([]histogramCommand, (*histograms_size))
@@ -69,7 +69,7 @@ func blockSplitterFinishBlockCommand(self *blockSplitterCommand, is_final bool) 
 	var split *blockSplit = self.split_
 	var last_entropy []float64 = self.last_entropy_[:]
 	var histograms []histogramCommand = self.histograms_
-	self.block_size_ = brotli_max_size_t(self.block_size_, self.min_block_size_)
+	self.block_size_ = brotliMaxSizeT(self.block_size_, self.min_block_size_)
 	if self.num_blocks_ == 0 {
 		/* Create first block. */
 		split.lengths[0] = uint32(self.block_size_)
@@ -78,7 +78,7 @@ func blockSplitterFinishBlockCommand(self *blockSplitterCommand, is_final bool) 
 		last_entropy[0] = bitsEntropy(histograms[0].data_[:], self.alphabet_size_)
 		last_entropy[1] = last_entropy[0]
 		self.num_blocks_++
-		split.num_types++
+		split.numTypes++
 		self.curr_histogram_ix_++
 		if self.curr_histogram_ix_ < *self.histograms_size_ {
 			histogramClearCommand(&histograms[self.curr_histogram_ix_])
@@ -98,17 +98,17 @@ func blockSplitterFinishBlockCommand(self *blockSplitterCommand, is_final bool) 
 			diff[j] = combined_entropy[j] - entropy - last_entropy[j]
 		}
 
-		if split.num_types < maxNumberOfBlockTypes && diff[0] > self.split_threshold_ && diff[1] > self.split_threshold_ {
+		if split.numTypes < maxNumberOfBlockTypes && diff[0] > self.split_threshold_ && diff[1] > self.split_threshold_ {
 			/* Create new block. */
 			split.lengths[self.num_blocks_] = uint32(self.block_size_)
 
-			split.types[self.num_blocks_] = byte(split.num_types)
+			split.types[self.num_blocks_] = byte(split.numTypes)
 			self.last_histogram_ix_[1] = self.last_histogram_ix_[0]
-			self.last_histogram_ix_[0] = uint(byte(split.num_types))
+			self.last_histogram_ix_[0] = uint(byte(split.numTypes))
 			last_entropy[1] = last_entropy[0]
 			last_entropy[0] = entropy
 			self.num_blocks_++
-			split.num_types++
+			split.numTypes++
 			self.curr_histogram_ix_++
 			if self.curr_histogram_ix_ < *self.histograms_size_ {
 				histogramClearCommand(&histograms[self.curr_histogram_ix_])
@@ -138,7 +138,7 @@ func blockSplitterFinishBlockCommand(self *blockSplitterCommand, is_final bool) 
 
 			histograms[self.last_histogram_ix_[0]] = combined_histo[0]
 			last_entropy[0] = combined_entropy[0]
-			if split.num_types == 1 {
+			if split.numTypes == 1 {
 				last_entropy[1] = last_entropy[0]
 			}
 
@@ -152,8 +152,8 @@ func blockSplitterFinishBlockCommand(self *blockSplitterCommand, is_final bool) 
 	}
 
 	if is_final {
-		*self.histograms_size_ = split.num_types
-		split.num_blocks = self.num_blocks_
+		*self.histograms_size_ = split.numTypes
+		split.numBlocks = self.num_blocks_
 	}
 }
 

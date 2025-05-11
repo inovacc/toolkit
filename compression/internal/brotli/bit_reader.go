@@ -8,9 +8,9 @@ import "encoding/binary"
    See file LICENSE for detail or copy at https://opensource.org/licenses/MIT
 */
 
-/* Bit reading helpers */
+/* A bit reading helpers */
 
-const shortFillBitWindowRead = (8 >> 1)
+const shortFillBitWindowRead = 8 >> 1
 
 var kBitMask = [33]uint32{
 	0x00000000,
@@ -53,19 +53,19 @@ func bitMask(n uint32) uint32 {
 }
 
 type bitReader struct {
-	val_      uint64
-	bit_pos_  uint32
-	input     []byte
-	input_len uint
-	byte_pos  uint
+	val      uint64
+	bitPos   uint32
+	input    []byte
+	inputLen uint
+	bytePos  uint
 }
 
 type bitReaderState struct {
-	val_      uint64
-	bit_pos_  uint32
-	input     []byte
-	input_len uint
-	byte_pos  uint
+	val      uint64
+	bitPos   uint32
+	input    []byte
+	inputLen uint
+	bytePos  uint
 }
 
 /* Initializes the BrotliBitReader fields. */
@@ -79,41 +79,41 @@ Ensures that accumulator is not empty.
 	reading.
 */
 func bitReaderSaveState(from *bitReader, to *bitReaderState) {
-	to.val_ = from.val_
-	to.bit_pos_ = from.bit_pos_
+	to.val = from.val
+	to.bitPos = from.bitPos
 	to.input = from.input
-	to.input_len = from.input_len
-	to.byte_pos = from.byte_pos
+	to.inputLen = from.inputLen
+	to.bytePos = from.bytePos
 }
 
 func bitReaderRestoreState(to *bitReader, from *bitReaderState) {
-	to.val_ = from.val_
-	to.bit_pos_ = from.bit_pos_
+	to.val = from.val
+	to.bitPos = from.bitPos
 	to.input = from.input
-	to.input_len = from.input_len
-	to.byte_pos = from.byte_pos
+	to.inputLen = from.inputLen
+	to.bytePos = from.bytePos
 }
 
 func getAvailableBits(br *bitReader) uint32 {
-	return 64 - br.bit_pos_
+	return 64 - br.bitPos
 }
 
 /*
 Returns amount of unread bytes the bit reader still has buffered from the
 
-	BrotliInput, including whole bytes in br->val_.
+	BrotliInput, including whole bytes in br->val.
 */
 func getRemainingBytes(br *bitReader) uint {
-	return uint(uint32(br.input_len-br.byte_pos) + (getAvailableBits(br) >> 3))
+	return uint(uint32(br.inputLen-br.bytePos) + (getAvailableBits(br) >> 3))
 }
 
 /*
 Checks if there is at least |num| bytes left in the input ring-buffer
 
-	(excluding the bits remaining in br->val_).
+	(excluding the bits remaining in br->val).
 */
 func checkInputAmount(br *bitReader, num uint) bool {
-	return br.input_len-br.byte_pos >= num
+	return br.inputLen-br.bytePos >= num
 }
 
 /*
@@ -121,14 +121,14 @@ Guarantees that there are at least |n_bits| + 1 bits in accumulator.
 
 	Precondition: accumulator contains at least 1 bit.
 	|n_bits| should be in the range [1..24] for regular build. For portable
-	non-64-bit little-endian build only 16 bits are safe to request.
+	non-64-bit little-endian build, only 16 bits are safe to request.
 */
-func fillBitWindow(br *bitReader, n_bits uint32) {
-	if br.bit_pos_ >= 32 {
-		br.val_ >>= 32
-		br.bit_pos_ ^= 32 /* here same as -= 32 because of the if condition */
-		br.val_ |= (uint64(binary.LittleEndian.Uint32(br.input[br.byte_pos:]))) << 32
-		br.byte_pos += 4
+func fillBitWindow(br *bitReader, _ uint32) {
+	if br.bitPos >= 32 {
+		br.val >>= 32
+		br.bitPos ^= 32 /* here same as -= 32 because of the if condition */
+		br.val |= (uint64(binary.LittleEndian.Uint32(br.input[br.bytePos:]))) << 32
+		br.bytePos += 4
 	}
 }
 
@@ -147,14 +147,14 @@ Tries to pull one byte of input to accumulator.
 	Returns false if there is no input available.
 */
 func pullByte(br *bitReader) bool {
-	if br.byte_pos == br.input_len {
+	if br.bytePos == br.inputLen {
 		return false
 	}
 
-	br.val_ >>= 8
-	br.val_ |= (uint64(br.input[br.byte_pos])) << 56
-	br.bit_pos_ -= 8
-	br.byte_pos++
+	br.val >>= 8
+	br.val |= (uint64(br.input[br.bytePos])) << 56
+	br.bitPos -= 8
+	br.bytePos++
 	return true
 }
 
@@ -164,7 +164,7 @@ Returns currently available bits.
 	The number of valid bits could be calculated by BrotliGetAvailableBits.
 */
 func getBitsUnmasked(br *bitReader) uint64 {
-	return br.val_ >> br.bit_pos_
+	return br.val >> br.bitPos
 }
 
 /*
@@ -182,9 +182,9 @@ Returns the specified number of bits from |br| without advancing bit
 
 	position.
 */
-func getBits(br *bitReader, n_bits uint32) uint32 {
-	fillBitWindow(br, n_bits)
-	return uint32(getBitsUnmasked(br)) & bitMask(n_bits)
+func getBits(br *bitReader, nBits uint32) uint32 {
+	fillBitWindow(br, nBits)
+	return uint32(getBitsUnmasked(br)) & bitMask(nBits)
 }
 
 /*
@@ -192,33 +192,33 @@ Tries to peek the specified amount of bits. Returns false, if there
 
 	is not enough input.
 */
-func safeGetBits(br *bitReader, n_bits uint32, val *uint32) bool {
-	for getAvailableBits(br) < n_bits {
+func safeGetBits(br *bitReader, nBits uint32, val *uint32) bool {
+	for getAvailableBits(br) < nBits {
 		if !pullByte(br) {
 			return false
 		}
 	}
 
-	*val = uint32(getBitsUnmasked(br)) & bitMask(n_bits)
+	*val = uint32(getBitsUnmasked(br)) & bitMask(nBits)
 	return true
 }
 
 /* Advances the bit pos by |n_bits|. */
-func dropBits(br *bitReader, n_bits uint32) {
-	br.bit_pos_ += n_bits
+func dropBits(br *bitReader, nBits uint32) {
+	br.bitPos += nBits
 }
 
 func bitReaderUnload(br *bitReader) {
-	var unused_bytes uint32 = getAvailableBits(br) >> 3
-	var unused_bits uint32 = unused_bytes << 3
-	br.byte_pos -= uint(unused_bytes)
-	if unused_bits == 64 {
-		br.val_ = 0
+	var unusedBytes = getAvailableBits(br) >> 3
+	var unusedBits = unusedBytes << 3
+	br.bytePos -= uint(unusedBytes)
+	if unusedBits == 64 {
+		br.val = 0
 	} else {
-		br.val_ <<= unused_bits
+		br.val <<= unusedBits
 	}
 
-	br.bit_pos_ += unused_bits
+	br.bitPos += unusedBits
 }
 
 /*
@@ -226,9 +226,9 @@ Reads the specified number of bits from |br| and advances the bit pos.
 
 	Precondition: accumulator MUST contain at least |n_bits|.
 */
-func takeBits(br *bitReader, n_bits uint32, val *uint32) {
-	*val = uint32(getBitsUnmasked(br)) & bitMask(n_bits)
-	dropBits(br, n_bits)
+func takeBits(br *bitReader, nBits uint32, val *uint32) {
+	*val = uint32(getBitsUnmasked(br)) & bitMask(nBits)
+	dropBits(br, nBits)
 }
 
 /*
@@ -236,10 +236,10 @@ Reads the specified number of bits from |br| and advances the bit pos.
 
 	Assumes that there is enough input to perform BrotliFillBitWindow.
 */
-func readBits(br *bitReader, n_bits uint32) uint32 {
+func readBits(br *bitReader, nBits uint32) uint32 {
 	var val uint32
-	fillBitWindow(br, n_bits)
-	takeBits(br, n_bits, &val)
+	fillBitWindow(br, nBits)
+	takeBits(br, nBits, &val)
 	return val
 }
 
@@ -248,14 +248,14 @@ Tries to read the specified amount of bits. Returns false, if there
 
 	is not enough input. |n_bits| MUST be positive.
 */
-func safeReadBits(br *bitReader, n_bits uint32, val *uint32) bool {
-	for getAvailableBits(br) < n_bits {
+func safeReadBits(br *bitReader, nBits uint32, val *uint32) bool {
+	for getAvailableBits(br) < nBits {
 		if !pullByte(br) {
 			return false
 		}
 	}
 
-	takeBits(br, n_bits, val)
+	takeBits(br, nBits, val)
 	return true
 }
 
@@ -265,17 +265,17 @@ Advances the bit reader position to the next byte boundary and verifies
 	that any skipped bits are set to zero.
 */
 func bitReaderJumpToByteBoundary(br *bitReader) bool {
-	var pad_bits_count uint32 = getAvailableBits(br) & 0x7
-	var pad_bits uint32 = 0
-	if pad_bits_count != 0 {
-		takeBits(br, pad_bits_count, &pad_bits)
+	var padBitsCount = getAvailableBits(br) & 0x7
+	var padBits uint32 = 0
+	if padBitsCount != 0 {
+		takeBits(br, padBitsCount, &padBits)
 	}
 
-	return pad_bits == 0
+	return padBits == 0
 }
 
 /*
-Copies remaining input bytes stored in the bit reader to the output. Value
+Copies the remaining input bytes stored in the bit reader to the output. Value
 
 	|num| may not be larger than BrotliGetRemainingBytes. The bit reader must be
 	warmed up again after this.
@@ -288,13 +288,13 @@ func copyBytes(dest []byte, br *bitReader, num uint) {
 		num--
 	}
 
-	copy(dest, br.input[br.byte_pos:][:num])
-	br.byte_pos += num
+	copy(dest, br.input[br.bytePos:][:num])
+	br.bytePos += num
 }
 
 func initBitReader(br *bitReader) {
-	br.val_ = 0
-	br.bit_pos_ = 64
+	br.val = 0
+	br.bitPos = 64
 }
 
 func warmupBitReader(br *bitReader) bool {

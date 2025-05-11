@@ -7,12 +7,12 @@ package brotli
 */
 
 type cmdLutElement struct {
-	insert_len_extra_bits byte
-	copy_len_extra_bits   byte
-	distance_code         int8
-	context               byte
-	insert_len_offset     uint16
-	copy_len_offset       uint16
+	insertLenExtraBits byte
+	copyLenExtraBits   byte
+	distanceCode       int8
+	context            byte
+	insertLenOffset    uint16
+	copyLenOffset      uint16
 }
 
 var kCmdLut = [numCommandSymbols]cmdLutElement{

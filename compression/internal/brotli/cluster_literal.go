@@ -18,8 +18,8 @@ func compareAndPushToQueueLiteral(out []histogramLiteral, cluster_size []uint32,
 	var p histogramPair
 	p.idx2 = 0
 	p.idx1 = p.idx2
-	p.cost_combo = 0
-	p.cost_diff = p.cost_combo
+	p.costCombo = 0
+	p.costDiff = p.costCombo
 	if idx1 == idx2 {
 		return
 	}
@@ -32,35 +32,35 @@ func compareAndPushToQueueLiteral(out []histogramLiteral, cluster_size []uint32,
 
 	p.idx1 = idx1
 	p.idx2 = idx2
-	p.cost_diff = 0.5 * clusterCostDiff(uint(cluster_size[idx1]), uint(cluster_size[idx2]))
-	p.cost_diff -= out[idx1].bit_cost_
-	p.cost_diff -= out[idx2].bit_cost_
+	p.costDiff = 0.5 * clusterCostDiff(uint(cluster_size[idx1]), uint(cluster_size[idx2]))
+	p.costDiff -= out[idx1].bitCost
+	p.costDiff -= out[idx2].bitCost
 
-	if out[idx1].total_count_ == 0 {
-		p.cost_combo = out[idx2].bit_cost_
+	if out[idx1].totalCount == 0 {
+		p.costCombo = out[idx2].bitCost
 		is_good_pair = true
-	} else if out[idx2].total_count_ == 0 {
-		p.cost_combo = out[idx1].bit_cost_
+	} else if out[idx2].totalCount == 0 {
+		p.costCombo = out[idx1].bitCost
 		is_good_pair = true
 	} else {
 		var threshold float64
 		if *num_pairs == 0 {
 			threshold = 1e99
 		} else {
-			threshold = brotli_max_double(0.0, pairs[0].cost_diff)
+			threshold = brotliMaxDouble(0.0, pairs[0].costDiff)
 		}
 		var combo histogramLiteral = out[idx1]
 		var cost_combo float64
 		histogramAddHistogramLiteral(&combo, &out[idx2])
 		cost_combo = populationCostLiteral(&combo)
-		if cost_combo < threshold-p.cost_diff {
-			p.cost_combo = cost_combo
+		if cost_combo < threshold-p.costDiff {
+			p.costCombo = cost_combo
 			is_good_pair = true
 		}
 	}
 
 	if is_good_pair {
-		p.cost_diff += p.cost_combo
+		p.costDiff += p.costCombo
 		if *num_pairs > 0 && histogramPairIsLess(&pairs[0], &p) {
 			/* Replace the top of the queue if needed. */
 			if *num_pairs < max_num_pairs {
@@ -96,7 +96,7 @@ func histogramCombineLiteral(out []histogramLiteral, cluster_size []uint32, symb
 		var best_idx1 uint32
 		var best_idx2 uint32
 		var i uint
-		if pairs[0].cost_diff >= cost_diff_threshold {
+		if pairs[0].costDiff >= cost_diff_threshold {
 			cost_diff_threshold = 1e99
 			min_cluster_size = max_clusters
 			continue
@@ -107,7 +107,7 @@ func histogramCombineLiteral(out []histogramLiteral, cluster_size []uint32, symb
 
 		best_idx2 = pairs[0].idx2
 		histogramAddHistogramLiteral(&out[best_idx1], &out[best_idx2])
-		out[best_idx1].bit_cost_ = pairs[0].cost_combo
+		out[best_idx1].bitCost = pairs[0].costCombo
 		cluster_size[best_idx1] += cluster_size[best_idx2]
 		for i = 0; i < symbols_size; i++ {
 			if symbols[i] == best_idx2 {
@@ -159,12 +159,12 @@ func histogramCombineLiteral(out []histogramLiteral, cluster_size []uint32, symb
 
 /* What is the bit cost of moving histogram from cur_symbol to candidate. */
 func histogramBitCostDistanceLiteral(histogram *histogramLiteral, candidate *histogramLiteral) float64 {
-	if histogram.total_count_ == 0 {
+	if histogram.totalCount == 0 {
 		return 0.0
 	} else {
 		var tmp histogramLiteral = *histogram
 		histogramAddHistogramLiteral(&tmp, candidate)
-		return populationCostLiteral(&tmp) - candidate.bit_cost_
+		return populationCostLiteral(&tmp) - candidate.bitCost
 	}
 }
 
@@ -276,12 +276,12 @@ func clusterHistogramsLiteral(in []histogramLiteral, in_size uint, max_histogram
 
 	for i = 0; i < in_size; i++ {
 		out[i] = in[i]
-		out[i].bit_cost_ = populationCostLiteral(&in[i])
+		out[i].bitCost = populationCostLiteral(&in[i])
 		histogram_symbols[i] = uint32(i)
 	}
 
 	for i = 0; i < in_size; i += max_input_histograms {
-		var num_to_combine uint = brotli_min_size_t(in_size-i, max_input_histograms)
+		var num_to_combine uint = brotliMinSizeT(in_size-i, max_input_histograms)
 		var num_new_clusters uint
 		var j uint
 		for j = 0; j < num_to_combine; j++ {
@@ -294,7 +294,7 @@ func clusterHistogramsLiteral(in []histogramLiteral, in_size uint, max_histogram
 	{
 		/* For the second pass, we limit the total number of histogram pairs.
 		   After this limit is reached, we only keep searching for the best pair. */
-		var max_num_pairs uint = brotli_min_size_t(64*num_clusters, (num_clusters/2)*num_clusters)
+		var max_num_pairs uint = brotliMinSizeT(64*num_clusters, (num_clusters/2)*num_clusters)
 		if pairs_capacity < (max_num_pairs + 1) {
 			var _new_size uint
 			if pairs_capacity == 0 {

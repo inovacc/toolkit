@@ -47,12 +47,12 @@ type hashForgetfulChain struct {
 	bankBits                uint
 	numLastDistancesToCheck int
 
-	addr          []uint32
-	head          []uint16
-	tiny_hash     [65536]byte
-	banks         [][]slot
-	free_slot_idx []uint16
-	max_hops      uint
+	addr        []uint32
+	head        []uint16
+	tinyHash    [65536]byte
+	banks       [][]slot
+	freeSlotIdx []uint16
+	maxHops     uint
 }
 
 func (h *hashForgetfulChain) Initialize(params *encoderParams) {
@@ -62,7 +62,7 @@ func (h *hashForgetfulChain) Initialize(params *encoderParams) {
 	} else {
 		q = 8
 	}
-	h.max_hops = q << uint(params.quality-4)
+	h.maxHops = q << uint(params.quality-4)
 
 	bankSize := 1 << h.bankBits
 	bucketSize := 1 << h.bucketBits
@@ -73,15 +73,15 @@ func (h *hashForgetfulChain) Initialize(params *encoderParams) {
 	for i := range h.banks {
 		h.banks[i] = make([]slot, bankSize)
 	}
-	h.free_slot_idx = make([]uint16, h.numBanks)
+	h.freeSlotIdx = make([]uint16, h.numBanks)
 }
 
-func (h *hashForgetfulChain) Prepare(one_shot bool, input_size uint, data []byte) {
-	var partial_prepare_threshold uint = (1 << h.bucketBits) >> 6
+func (h *hashForgetfulChain) Prepare(oneShot bool, inputSize uint, data []byte) {
+	var partialPrepareThreshold uint = (1 << h.bucketBits) >> 6
 	/* Partial preparation is 100 times slower (per socket). */
-	if one_shot && input_size <= partial_prepare_threshold {
+	if oneShot && inputSize <= partialPrepareThreshold {
 		var i uint
-		for i = 0; i < input_size; i++ {
+		for i = 0; i < inputSize; i++ {
 			var bucket uint = h.HashBytes(data[i:])
 
 			/* See InitEmpty comment. */
@@ -102,9 +102,9 @@ func (h *hashForgetfulChain) Prepare(one_shot bool, input_size uint, data []byte
 		}
 	}
 
-	h.tiny_hash = [65536]byte{}
-	for i := range h.free_slot_idx {
-		h.free_slot_idx[i] = 0
+	h.tinyHash = [65536]byte{}
+	for i := range h.freeSlotIdx {
+		h.freeSlotIdx[i] = 0
 	}
 }
 
@@ -116,10 +116,10 @@ Look at 4 bytes at &data[ix & mask]. Compute a hash from these, and prepend
 func (h *hashForgetfulChain) Store(data []byte, mask uint, ix uint) {
 	var key uint = h.HashBytes(data[ix&mask:])
 	var bank uint = key & (h.numBanks - 1)
-	idx := uint(h.free_slot_idx[bank]) & ((1 << h.bankBits) - 1)
-	h.free_slot_idx[bank]++
+	idx := uint(h.freeSlotIdx[bank]) & ((1 << h.bankBits) - 1)
+	h.freeSlotIdx[bank]++
 	var delta uint = ix - uint(h.addr[key])
-	h.tiny_hash[uint16(ix)] = byte(key)
+	h.tinyHash[uint16(ix)] = byte(key)
 	if delta > 0xFFFF {
 		delta = 0xFFFF
 	}
@@ -129,26 +129,26 @@ func (h *hashForgetfulChain) Store(data []byte, mask uint, ix uint) {
 	h.head[key] = uint16(idx)
 }
 
-func (h *hashForgetfulChain) StoreRange(data []byte, mask uint, ix_start uint, ix_end uint) {
+func (h *hashForgetfulChain) StoreRange(data []byte, mask uint, ixStart uint, ixEnd uint) {
 	var i uint
-	for i = ix_start; i < ix_end; i++ {
+	for i = ixStart; i < ixEnd; i++ {
 		h.Store(data, mask, i)
 	}
 }
 
-func (h *hashForgetfulChain) StitchToPreviousBlock(num_bytes uint, position uint, ringbuffer []byte, ring_buffer_mask uint) {
-	if num_bytes >= h.HashTypeLength()-1 && position >= 3 {
+func (h *hashForgetfulChain) StitchToPreviousBlock(numBytes uint, position uint, ringbuffer []byte, ringBufferMask uint) {
+	if numBytes >= h.HashTypeLength()-1 && position >= 3 {
 		/* Prepare the hashes for three last bytes of the last write.
 		   These could not be calculated before, since they require knowledge
 		   of both the previous and the current block. */
-		h.Store(ringbuffer, ring_buffer_mask, position-3)
-		h.Store(ringbuffer, ring_buffer_mask, position-2)
-		h.Store(ringbuffer, ring_buffer_mask, position-1)
+		h.Store(ringbuffer, ringBufferMask, position-3)
+		h.Store(ringbuffer, ringBufferMask, position-2)
+		h.Store(ringbuffer, ringBufferMask, position-1)
 	}
 }
 
-func (h *hashForgetfulChain) PrepareDistanceCache(distance_cache []int) {
-	prepareDistanceCache(distance_cache, h.numLastDistancesToCheck)
+func (h *hashForgetfulChain) PrepareDistanceCache(distanceCache []int) {
+	prepareDistanceCache(distanceCache, h.numLastDistancesToCheck)
 }
 
 /*
@@ -165,13 +165,13 @@ Find a longest backward match of &data[cur_ix] up to the length of
 	Writes the best match into |out|.
 	|out|->score is updated only if a better match is found.
 */
-func (h *hashForgetfulChain) FindLongestMatch(dictionary *encoderDictionary, data []byte, ring_buffer_mask uint, distance_cache []int, cur_ix uint, max_length uint, max_backward uint, gap uint, max_distance uint, out *hasherSearchResult) {
-	var cur_ix_masked uint = cur_ix & ring_buffer_mask
-	var min_score uint = out.score
-	var best_score uint = out.score
-	var best_len uint = out.len
-	var key uint = h.HashBytes(data[cur_ix_masked:])
-	var tiny_hash byte = byte(key)
+func (h *hashForgetfulChain) FindLongestMatch(dictionary *encoderDictionary, data []byte, ringBufferMask uint, distanceCache []int, curIx uint, maxLength uint, maxBackward uint, gap uint, maxDistance uint, out *hasherSearchResult) {
+	var curIxMasked uint = curIx & ringBufferMask
+	var minScore uint = out.score
+	var bestScore uint = out.score
+	var bestLen uint = out.len
+	var key uint = h.HashBytes(data[curIxMasked:])
+	var tinyHash byte = byte(key)
 	/* Don't accept a short copy from far away. */
 	out.len = 0
 
@@ -179,32 +179,32 @@ func (h *hashForgetfulChain) FindLongestMatch(dictionary *encoderDictionary, dat
 
 	/* Try last distance first. */
 	for i := 0; i < h.numLastDistancesToCheck; i++ {
-		var backward uint = uint(distance_cache[i])
-		var prev_ix uint = (cur_ix - backward)
+		var backward uint = uint(distanceCache[i])
+		var prevIx uint = curIx - backward
 
 		/* For distance code 0 we want to consider 2-byte matches. */
-		if i > 0 && h.tiny_hash[uint16(prev_ix)] != tiny_hash {
+		if i > 0 && h.tinyHash[uint16(prevIx)] != tinyHash {
 			continue
 		}
-		if prev_ix >= cur_ix || backward > max_backward {
+		if prevIx >= curIx || backward > maxBackward {
 			continue
 		}
 
-		prev_ix &= ring_buffer_mask
+		prevIx &= ringBufferMask
 		{
-			var len uint = findMatchLengthWithLimit(data[prev_ix:], data[cur_ix_masked:], max_length)
-			if len >= 2 {
-				var score uint = backwardReferenceScoreUsingLastDistance(uint(len))
-				if best_score < score {
+			var limit uint = findMatchLengthWithLimit(data[prevIx:], data[curIxMasked:], maxLength)
+			if limit >= 2 {
+				var score uint = backwardReferenceScoreUsingLastDistance(uint(limit))
+				if bestScore < score {
 					if i != 0 {
 						score -= backwardReferencePenaltyUsingLastDistance(uint(i))
 					}
-					if best_score < score {
-						best_score = score
-						best_len = uint(len)
-						out.len = best_len
+					if bestScore < score {
+						bestScore = score
+						bestLen = uint(limit)
+						out.len = bestLen
 						out.distance = backward
-						out.score = best_score
+						out.score = bestScore
 					}
 				}
 			}
@@ -213,8 +213,8 @@ func (h *hashForgetfulChain) FindLongestMatch(dictionary *encoderDictionary, dat
 	{
 		var bank uint = key & (h.numBanks - 1)
 		var backward uint = 0
-		var hops uint = h.max_hops
-		var delta uint = cur_ix - uint(h.addr[key])
+		var hops uint = h.maxHops
+		var delta uint = curIx - uint(h.addr[key])
 		var slot uint = uint(h.head[key])
 		for {
 			tmp6 := hops
@@ -222,40 +222,40 @@ func (h *hashForgetfulChain) FindLongestMatch(dictionary *encoderDictionary, dat
 			if tmp6 == 0 {
 				break
 			}
-			var prev_ix uint
+			var prevIx uint
 			var last uint = slot
 			backward += delta
-			if backward > max_backward {
+			if backward > maxBackward {
 				break
 			}
-			prev_ix = (cur_ix - backward) & ring_buffer_mask
+			prevIx = (curIx - backward) & ringBufferMask
 			slot = uint(h.banks[bank][last].next)
 			delta = uint(h.banks[bank][last].delta)
-			if cur_ix_masked+best_len > ring_buffer_mask || prev_ix+best_len > ring_buffer_mask || data[cur_ix_masked+best_len] != data[prev_ix+best_len] {
+			if curIxMasked+bestLen > ringBufferMask || prevIx+bestLen > ringBufferMask || data[curIxMasked+bestLen] != data[prevIx+bestLen] {
 				continue
 			}
 			{
-				var len uint = findMatchLengthWithLimit(data[prev_ix:], data[cur_ix_masked:], max_length)
-				if len >= 4 {
+				var limit uint = findMatchLengthWithLimit(data[prevIx:], data[curIxMasked:], maxLength)
+				if limit >= 4 {
 					/* Comparing for >= 3 does not change the semantics, but just saves
 					   for a few unnecessary binary logarithms in backward reference
 					   score, since we are not interested in such short matches. */
-					var score uint = backwardReferenceScore(uint(len), backward)
-					if best_score < score {
-						best_score = score
-						best_len = uint(len)
-						out.len = best_len
+					var score uint = backwardReferenceScore(uint(limit), backward)
+					if bestScore < score {
+						bestScore = score
+						bestLen = uint(limit)
+						out.len = bestLen
 						out.distance = backward
-						out.score = best_score
+						out.score = bestScore
 					}
 				}
 			}
 		}
 
-		h.Store(data, ring_buffer_mask, cur_ix)
+		h.Store(data, ringBufferMask, curIx)
 	}
 
-	if out.score == min_score {
-		searchInStaticDictionary(dictionary, h, data[cur_ix_masked:], max_length, max_backward+gap, max_distance, out, false)
+	if out.score == minScore {
+		searchInStaticDictionary(dictionary, h, data[curIxMasked:], maxLength, maxBackward+gap, maxDistance, out, false)
 	}
 }

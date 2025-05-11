@@ -10,7 +10,7 @@ import "io"
 // the expression
 //
 //	uuid.MustUUID(uuid.NewRandom())
-func NewUUID() UUID {
+func New() UUID {
 	return MustUUID(NewRandomUUID())
 }
 
@@ -38,7 +38,7 @@ func NewUUIDString() string {
 //	year and having one duplicate.
 func NewRandomUUID() (UUID, error) {
 	if !poolEnabled {
-		return NewRandomFromReader(rander)
+		return NewRandomFromReader(randerUUID)
 	}
 	return newRandomFromPool()
 }
@@ -59,7 +59,7 @@ func newRandomFromPool() (UUID, error) {
 	var uuid UUID
 	poolMu.Lock()
 	if poolPos == randPoolSize {
-		_, err := io.ReadFull(rander, pool[:])
+		_, err := io.ReadFull(randerUUID, pool[:])
 		if err != nil {
 			poolMu.Unlock()
 			return Nil, err

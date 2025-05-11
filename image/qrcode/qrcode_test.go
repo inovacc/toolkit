@@ -1,11 +1,14 @@
 package qrcode
 
 import (
+	"path/filepath"
 	"testing"
 
 	"github.com/divan/txqr/qr"
 	"github.com/inovacc/toolkit/data/algorithm/random"
 )
+
+const testDataDir = "../testdata"
 
 func TestNewQrcode(t *testing.T) {
 	data := random.RandomString(500)
@@ -15,7 +18,7 @@ func TestNewQrcode(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	if err := qrcode.WriteFile(800, "qr.png"); err != nil {
+	if err := qrcode.WriteFile(800, filepath.Join(testDataDir, "qr.png")); err != nil {
 		t.Fatal(err)
 	}
 }

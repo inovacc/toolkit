@@ -37,7 +37,7 @@ const (
 const randPoolSize = 16 * 16
 
 var (
-	rander      = rand.Reader // random function
+	randerUUID  = rand.Reader // random function
 	poolEnabled = false
 	poolMu      sync.Mutex
 	poolPos     = randPoolSize     // protected with poolMu
@@ -312,18 +312,18 @@ func (v Variant) String() string {
 	return fmt.Sprintf("BadVariant%d", int(v))
 }
 
-// SetRand sets the random number generator to r, which implements io.Reader.
+// SetRandUUID sets the random number generator to r, which implements io.Reader.
 // If r.Read returns an error when the package requests random data then
 // a panic will be issued.
 //
-// Calling SetRand with nil sets the random number generator to the default
+// Calling SetRandUUID with nil sets the random number generator to the default
 // generator.
-func SetRand(r io.Reader) {
+func SetRandUUID(r io.Reader) {
 	if r == nil {
-		rander = rand.Reader
+		randerUUID = rand.Reader
 		return
 	}
-	rander = r
+	randerUUID = r
 }
 
 // EnableRandPool enables internal randomness pool used for Random
@@ -332,7 +332,7 @@ func SetRand(r io.Reader) {
 // may improve the UUID generation throughput significantly.
 //
 // Since the pool is stored on the Go heap, this feature may be a bad fit
-// for security sensitive applications.
+// for security-sensitive applications.
 //
 // Both EnableRandPool and DisableRandPool are not thread-safe and should
 // only be called when there is no possibility that New or any other

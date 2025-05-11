@@ -76,39 +76,39 @@ type Writer struct {
 	options WriterOptions
 	err     error
 
-	params              encoderParams
-	hasher_             hasherHandle
-	input_pos_          uint64
-	ringbuffer_         ringBuffer
-	commands            []command
-	num_literals_       uint
-	last_insert_len_    uint
-	last_flush_pos_     uint64
-	last_processed_pos_ uint64
-	dist_cache_         [numDistanceShortCodes]int
-	saved_dist_cache_   [4]int
-	last_bytes_         uint16
-	last_bytes_bits_    byte
-	prev_byte_          byte
-	prev_byte2_         byte
-	storage             []byte
-	small_table_        [1 << 10]int
-	large_table_        []int
-	large_table_size_   uint
-	cmd_depths_         [128]byte
-	cmd_bits_           [128]uint16
-	cmd_code_           [512]byte
-	cmd_code_numbits_   uint
-	command_buf_        []uint32
-	literal_buf_        []byte
-	tiny_buf_           struct {
+	params           encoderParams
+	hasher_          hasherHandle
+	inputPos         uint64
+	ringbuffer_      ringBuffer
+	commands         []command
+	numLiterals      uint
+	lastInsertLen    uint
+	lastFlushPos     uint64
+	lastProcessedPos uint64
+	distCache        [numDistanceShortCodes]int
+	savedDistCache   [4]int
+	lastBytes        uint16
+	lastBytesBits    byte
+	prevByte         byte
+	prevByte2        byte
+	storage          []byte
+	smallTable       [1 << 10]int
+	largeTable       []int
+	largeTableSize   uint
+	cmdDepths        [128]byte
+	cmdBits          [128]uint16
+	cmdCode          [512]byte
+	cmdCodeNumbits   uint
+	commandBuf       []uint32
+	literalBuf       []byte
+	tinyBuf          struct {
 		u64 [2]uint64
 		u8  [16]byte
 	}
-	remaining_metadata_bytes_ uint32
-	stream_state_             int
-	is_last_block_emitted_    bool
-	is_initialized_           bool
+	remainingMetadataBytes uint32
+	streamState            int
+	isLastBlockEmitted     bool
+	isInitialized          bool
 }
 
 func inputBlockSize(s *Writer) uint {
@@ -116,16 +116,16 @@ func inputBlockSize(s *Writer) uint {
 }
 
 func unprocessedInputSize(s *Writer) uint64 {
-	return s.input_pos_ - s.last_processed_pos_
+	return s.inputPos - s.lastProcessedPos
 }
 
 func remainingInputBlockSize(s *Writer) uint {
 	var delta uint64 = unprocessedInputSize(s)
-	var block_size uint = inputBlockSize(s)
-	if delta >= uint64(block_size) {
+	var blockSize uint = inputBlockSize(s)
+	if delta >= uint64(blockSize) {
 		return 0
 	}
-	return block_size - uint(delta)
+	return blockSize - uint(delta)
 }
 
 /*
@@ -152,25 +152,25 @@ func (s *Writer) getStorage(size int) []byte {
 	return s.storage
 }
 
-func hashTableSize(max_table_size uint, input_size uint) uint {
+func hashTableSize(maxTableSize uint, inputSize uint) uint {
 	var htsize uint = 256
-	for htsize < max_table_size && htsize < input_size {
+	for htsize < maxTableSize && htsize < inputSize {
 		htsize <<= 1
 	}
 
 	return htsize
 }
 
-func getHashTable(s *Writer, quality int, input_size uint, table_size *uint) []int {
-	var max_table_size uint = maxHashTableSize(quality)
-	var htsize uint = hashTableSize(max_table_size, input_size)
+func getHashTable(s *Writer, quality int, inputSize uint, tableSize *uint) []int {
+	var maxTableSize uint = maxHashTableSize(quality)
+	var htsize uint = hashTableSize(maxTableSize, inputSize)
 	/* Use smaller hash table when input.size() is smaller, since we
 	   fill the table, incurring O(hash table size) overhead for
 	   compression, and if the input is short, we won't need that
 	   many hash table entries anyway. */
 
 	var table []int
-	assert(max_table_size >= 256)
+	assert(maxTableSize >= 256)
 	if quality == fastOnePassCompressionQuality {
 		/* Only odd shifts are supported by fast-one-pass. */
 		if htsize&0xAAAAA == 0 {
@@ -178,42 +178,42 @@ func getHashTable(s *Writer, quality int, input_size uint, table_size *uint) []i
 		}
 	}
 
-	if htsize <= uint(len(s.small_table_)) {
-		table = s.small_table_[:]
+	if htsize <= uint(len(s.smallTable)) {
+		table = s.smallTable[:]
 	} else {
-		if htsize > s.large_table_size_ {
-			s.large_table_size_ = htsize
-			s.large_table_ = nil
-			s.large_table_ = make([]int, htsize)
+		if htsize > s.largeTableSize {
+			s.largeTableSize = htsize
+			s.largeTable = nil
+			s.largeTable = make([]int, htsize)
 		}
 
-		table = s.large_table_
+		table = s.largeTable
 	}
 
-	*table_size = htsize
+	*tableSize = htsize
 	for i := 0; i < int(htsize); i++ {
 		table[i] = 0
 	}
 	return table
 }
 
-func encodeWindowBits(lgwin int, large_window bool, last_bytes *uint16, last_bytes_bits *byte) {
-	if large_window {
-		*last_bytes = uint16((lgwin&0x3F)<<8 | 0x11)
-		*last_bytes_bits = 14
+func encodeWindowBits(lgwin int, largeWindow bool, lastBytes *uint16, lastBytesBits *byte) {
+	if largeWindow {
+		*lastBytes = uint16((lgwin&0x3F)<<8 | 0x11)
+		*lastBytesBits = 14
 	} else {
 		if lgwin == 16 {
-			*last_bytes = 0
-			*last_bytes_bits = 1
+			*lastBytes = 0
+			*lastBytesBits = 1
 		} else if lgwin == 17 {
-			*last_bytes = 1
-			*last_bytes_bits = 7
+			*lastBytes = 1
+			*lastBytesBits = 7
 		} else if lgwin > 17 {
-			*last_bytes = uint16((lgwin-17)<<1 | 0x01)
-			*last_bytes_bits = 4
+			*lastBytes = uint16((lgwin-17)<<1 | 0x01)
+			*lastBytesBits = 4
 		} else {
-			*last_bytes = uint16((lgwin-8)<<4 | 0x01)
-			*last_bytes_bits = 7
+			*lastBytes = uint16((lgwin-8)<<4 | 0x01)
+			*lastBytesBits = 7
 		}
 	}
 }
@@ -239,26 +239,26 @@ var kStaticContextMapSimpleUTF8 = [64]uint32{
 	0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
 }
 
-func chooseContextMap(quality int, bigram_histo []uint32, num_literal_contexts *uint, literal_context_map *[]uint32) {
-	var monogram_histo = [3]uint32{0}
-	var two_prefix_histo = [6]uint32{0}
+func chooseContextMap(quality int, bigramHisto []uint32, numLiteralContexts *uint, literalContextMap *[]uint32) {
+	var monogramHisto = [3]uint32{0}
+	var twoPrefixHisto = [6]uint32{0}
 	var total uint
 	var i uint
 	var dummy uint
 	var entropy [4]float64
 	for i = 0; i < 9; i++ {
-		monogram_histo[i%3] += bigram_histo[i]
-		two_prefix_histo[i%6] += bigram_histo[i]
+		monogramHisto[i%3] += bigramHisto[i]
+		twoPrefixHisto[i%6] += bigramHisto[i]
 	}
 
-	entropy[1] = shannonEntropy(monogram_histo[:], 3, &dummy)
-	entropy[2] = (shannonEntropy(two_prefix_histo[:], 3, &dummy) + shannonEntropy(two_prefix_histo[3:], 3, &dummy))
+	entropy[1] = shannonEntropy(monogramHisto[:], 3, &dummy)
+	entropy[2] = shannonEntropy(twoPrefixHisto[:], 3, &dummy) + shannonEntropy(twoPrefixHisto[3:], 3, &dummy)
 	entropy[3] = 0
 	for i = 0; i < 3; i++ {
-		entropy[3] += shannonEntropy(bigram_histo[3*i:], 3, &dummy)
+		entropy[3] += shannonEntropy(bigramHisto[3*i:], 3, &dummy)
 	}
 
-	total = uint(monogram_histo[0] + monogram_histo[1] + monogram_histo[2])
+	total = uint(monogramHisto[0] + monogramHisto[1] + monogramHisto[2])
 	assert(total != 0)
 	entropy[0] = 1.0 / float64(total)
 	entropy[1] *= entropy[0]
@@ -273,13 +273,13 @@ func chooseContextMap(quality int, bigram_histo []uint32, num_literal_contexts *
 	/* If expected savings by symbol are less than 0.2 bits, skip the
 	   context modeling -- in exchange for faster decoding speed. */
 	if entropy[1]-entropy[2] < 0.2 && entropy[1]-entropy[3] < 0.2 {
-		*num_literal_contexts = 1
+		*numLiteralContexts = 1
 	} else if entropy[2]-entropy[3] < 0.02 {
-		*num_literal_contexts = 2
-		*literal_context_map = kStaticContextMapSimpleUTF8[:]
+		*numLiteralContexts = 2
+		*literalContextMap = kStaticContextMapSimpleUTF8[:]
 	} else {
-		*num_literal_contexts = 3
-		*literal_context_map = kStaticContextMapContinuation[:]
+		*numLiteralContexts = 3
+		*literalContextMap = kStaticContextMapContinuation[:]
 	}
 }
 
@@ -306,45 +306,45 @@ var kStaticContextMapComplexUTF8 = [64]uint32{
 	6, 6, 6, 6,
 }
 
-func shouldUseComplexStaticContextMap(input []byte, start_pos uint, length uint, mask uint, quality int, size_hint uint, num_literal_contexts *uint, literal_context_map *[]uint32) bool {
+func shouldUseComplexStaticContextMap(input []byte, startPos uint, length uint, mask uint, quality int, sizeHint uint, numLiteralContexts *uint, literalContextMap *[]uint32) bool {
 	/* Try the more complex static context map only for long data. */
-	if size_hint < 1<<20 {
+	if sizeHint < 1<<20 {
 		return false
 	} else {
-		var end_pos uint = start_pos + length
-		var combined_histo = [32]uint32{0}
-		var context_histo = [13][32]uint32{[32]uint32{0}}
+		var endPos uint = startPos + length
+		var combinedHisto = [32]uint32{0}
+		var contextHisto = [13][32]uint32{[32]uint32{0}}
 		var total uint32 = 0
 		var entropy [3]float64
 		var dummy uint
 		var i uint
-		var utf8_lut contextLUT = getContextLUT(contextUTF8)
+		var utf8Lut contextLUT = getContextLUT(contextUTF8)
 		/* To make entropy calculations faster and to fit on the stack, we collect
 		   histograms over the 5 most significant bits of literals. One histogram
 		   without context and 13 additional histograms for each context value. */
-		for ; start_pos+64 <= end_pos; start_pos += 4096 {
-			var stride_end_pos uint = start_pos + 64
-			var prev2 byte = input[start_pos&mask]
-			var prev1 byte = input[(start_pos+1)&mask]
+		for ; startPos+64 <= endPos; startPos += 4096 {
+			var strideEndPos uint = startPos + 64
+			var prev2 byte = input[startPos&mask]
+			var prev1 byte = input[(startPos+1)&mask]
 			var pos uint
 
 			/* To make the analysis of the data faster we only examine 64 byte long
 			   strides at every 4kB intervals. */
-			for pos = start_pos + 2; pos < stride_end_pos; pos++ {
+			for pos = startPos + 2; pos < strideEndPos; pos++ {
 				var literal byte = input[pos&mask]
-				var context byte = byte(kStaticContextMapComplexUTF8[getContext(prev1, prev2, utf8_lut)])
+				var context byte = byte(kStaticContextMapComplexUTF8[getContext(prev1, prev2, utf8Lut)])
 				total++
-				combined_histo[literal>>3]++
-				context_histo[context][literal>>3]++
+				combinedHisto[literal>>3]++
+				contextHisto[context][literal>>3]++
 				prev2 = prev1
 				prev1 = literal
 			}
 		}
 
-		entropy[1] = shannonEntropy(combined_histo[:], 32, &dummy)
+		entropy[1] = shannonEntropy(combinedHisto[:], 32, &dummy)
 		entropy[2] = 0
 		for i = 0; i < 13; i++ {
-			entropy[2] += shannonEntropy(context_histo[i][0:], 32, &dummy)
+			entropy[2] += shannonEntropy(contextHisto[i][0:], 32, &dummy)
 		}
 
 		entropy[0] = 1.0 / float64(total)
@@ -361,61 +361,61 @@ func shouldUseComplexStaticContextMap(input []byte, start_pos uint, length uint,
 		if entropy[2] > 3.0 || entropy[1]-entropy[2] < 0.2 {
 			return false
 		} else {
-			*num_literal_contexts = 13
-			*literal_context_map = kStaticContextMapComplexUTF8[:]
+			*numLiteralContexts = 13
+			*literalContextMap = kStaticContextMapComplexUTF8[:]
 			return true
 		}
 	}
 }
 
-func decideOverLiteralContextModeling(input []byte, start_pos uint, length uint, mask uint, quality int, size_hint uint, num_literal_contexts *uint, literal_context_map *[]uint32) {
+func decideOverLiteralContextModeling(input []byte, startPos uint, length uint, mask uint, quality int, sizeHint uint, numLiteralContexts *uint, literalContextMap *[]uint32) {
 	if quality < minQualityForContextModeling || length < 64 {
 		return
-	} else if shouldUseComplexStaticContextMap(input, start_pos, length, mask, quality, size_hint, num_literal_contexts, literal_context_map) {
+	} else if shouldUseComplexStaticContextMap(input, startPos, length, mask, quality, sizeHint, numLiteralContexts, literalContextMap) {
 	} else /* Context map was already set, nothing else to do. */
 	{
-		var end_pos uint = start_pos + length
+		var endPos uint = startPos + length
 		/* Gather bi-gram data of the UTF8 byte prefixes. To make the analysis of
 		   UTF8 data faster we only examine 64 byte long strides at every 4kB
 		   intervals. */
 
-		var bigram_prefix_histo = [9]uint32{0}
-		for ; start_pos+64 <= end_pos; start_pos += 4096 {
+		var bigramPrefixHisto = [9]uint32{0}
+		for ; startPos+64 <= endPos; startPos += 4096 {
 			var lut = [4]int{0, 0, 1, 2}
-			var stride_end_pos uint = start_pos + 64
-			var prev int = lut[input[start_pos&mask]>>6] * 3
+			var strideEndPos uint = startPos + 64
+			var prev int = lut[input[startPos&mask]>>6] * 3
 			var pos uint
-			for pos = start_pos + 1; pos < stride_end_pos; pos++ {
+			for pos = startPos + 1; pos < strideEndPos; pos++ {
 				var literal byte = input[pos&mask]
-				bigram_prefix_histo[prev+lut[literal>>6]]++
+				bigramPrefixHisto[prev+lut[literal>>6]]++
 				prev = lut[literal>>6] * 3
 			}
 		}
 
-		chooseContextMap(quality, bigram_prefix_histo[0:], num_literal_contexts, literal_context_map)
+		chooseContextMap(quality, bigramPrefixHisto[0:], numLiteralContexts, literalContextMap)
 	}
 }
 
-func shouldCompress_encode(data []byte, mask uint, last_flush_pos uint64, bytes uint, num_literals uint, num_commands uint) bool {
+func shouldcompressEncode(data []byte, mask uint, lastFlushPos uint64, bytes uint, numLiterals uint, numCommands uint) bool {
 	/* TODO: find more precise minimal block overhead. */
 	if bytes <= 2 {
 		return false
 	}
-	if num_commands < (bytes>>8)+2 {
-		if float64(num_literals) > 0.99*float64(bytes) {
-			var literal_histo = [256]uint32{0}
+	if numCommands < (bytes>>8)+2 {
+		if float64(numLiterals) > 0.99*float64(bytes) {
+			var literalHisto = [256]uint32{0}
 			const kSampleRate uint32 = 13
 			const kMinEntropy float64 = 7.92
-			var bit_cost_threshold float64 = float64(bytes) * kMinEntropy / float64(kSampleRate)
+			var bitCostThreshold float64 = float64(bytes) * kMinEntropy / float64(kSampleRate)
 			var t uint = uint((uint32(bytes) + kSampleRate - 1) / kSampleRate)
-			var pos uint32 = uint32(last_flush_pos)
+			var pos uint32 = uint32(lastFlushPos)
 			var i uint
 			for i = 0; i < t; i++ {
-				literal_histo[data[pos&uint32(mask)]]++
+				literalHisto[data[pos&uint32(mask)]]++
 				pos += kSampleRate
 			}
 
-			if bitsEntropy(literal_histo[:], 256) > bit_cost_threshold {
+			if bitsEntropy(literalHisto[:], 256) > bitCostThreshold {
 				return false
 			}
 		}
@@ -435,110 +435,110 @@ func chooseContextMode(params *encoderParams, data []byte, pos uint, mask uint, 
 	return contextUTF8
 }
 
-func writeMetaBlockInternal(data []byte, mask uint, last_flush_pos uint64, bytes uint, is_last bool, literal_context_mode int, params *encoderParams, prev_byte byte, prev_byte2 byte, num_literals uint, commands []command, saved_dist_cache []int, dist_cache []int, storage_ix *uint, storage []byte) {
-	var wrapped_last_flush_pos uint32 = wrapPosition(last_flush_pos)
-	var last_bytes uint16
-	var last_bytes_bits byte
-	var literal_context_lut contextLUT = getContextLUT(literal_context_mode)
-	var block_params encoderParams = *params
+func writeMetaBlockInternal(data []byte, mask uint, lastFlushPos uint64, bytes uint, isLast bool, literalContextMode int, params *encoderParams, prevByte byte, prevByte2 byte, numLiterals uint, commands []command, savedDistCache []int, distCache []int, storageIx *uint, storage []byte) {
+	var wrappedLastFlushPos uint32 = wrapPosition(lastFlushPos)
+	var lastBytes uint16
+	var lastBytesBits byte
+	var literalContextLut contextLUT = getContextLUT(literalContextMode)
+	var blockParams encoderParams = *params
 
 	if bytes == 0 {
 		/* Write the ISLAST and ISEMPTY bits. */
-		writeBits(2, 3, storage_ix, storage)
+		writeBits(2, 3, storageIx, storage)
 
-		*storage_ix = (*storage_ix + 7) &^ 7
+		*storageIx = (*storageIx + 7) &^ 7
 		return
 	}
 
-	if !shouldCompress_encode(data, mask, last_flush_pos, bytes, num_literals, uint(len(commands))) {
+	if !shouldcompressEncode(data, mask, lastFlushPos, bytes, numLiterals, uint(len(commands))) {
 		/* Restore the distance cache, as its last update by
 		   CreateBackwardReferences is now unused. */
-		copy(dist_cache, saved_dist_cache[:4])
+		copy(distCache, savedDistCache[:4])
 
-		storeUncompressedMetaBlock(is_last, data, uint(wrapped_last_flush_pos), mask, bytes, storage_ix, storage)
+		storeUncompressedMetaBlock(isLast, data, uint(wrappedLastFlushPos), mask, bytes, storageIx, storage)
 		return
 	}
 
-	assert(*storage_ix <= 14)
-	last_bytes = uint16(storage[1])<<8 | uint16(storage[0])
-	last_bytes_bits = byte(*storage_ix)
+	assert(*storageIx <= 14)
+	lastBytes = uint16(storage[1])<<8 | uint16(storage[0])
+	lastBytesBits = byte(*storageIx)
 	if params.quality <= maxQualityForStaticEntropyCodes {
-		storeMetaBlockFast(data, uint(wrapped_last_flush_pos), bytes, mask, is_last, params, commands, storage_ix, storage)
+		storeMetaBlockFast(data, uint(wrappedLastFlushPos), bytes, mask, isLast, params, commands, storageIx, storage)
 	} else if params.quality < minQualityForBlockSplit {
-		storeMetaBlockTrivial(data, uint(wrapped_last_flush_pos), bytes, mask, is_last, params, commands, storage_ix, storage)
+		storeMetaBlockTrivial(data, uint(wrappedLastFlushPos), bytes, mask, isLast, params, commands, storageIx, storage)
 	} else {
 		mb := getMetaBlockSplit()
 		if params.quality < minQualityForHqBlockSplitting {
-			var num_literal_contexts uint = 1
-			var literal_context_map []uint32 = nil
-			if !params.disable_literal_context_modeling {
-				decideOverLiteralContextModeling(data, uint(wrapped_last_flush_pos), bytes, mask, params.quality, params.size_hint, &num_literal_contexts, &literal_context_map)
+			var numLiteralContexts uint = 1
+			var literalContextMap []uint32 = nil
+			if !params.disableLiteralContextModeling {
+				decideOverLiteralContextModeling(data, uint(wrappedLastFlushPos), bytes, mask, params.quality, params.sizeHint, &numLiteralContexts, &literalContextMap)
 			}
 
-			buildMetaBlockGreedy(data, uint(wrapped_last_flush_pos), mask, prev_byte, prev_byte2, literal_context_lut, num_literal_contexts, literal_context_map, commands, mb)
+			buildMetaBlockGreedy(data, uint(wrappedLastFlushPos), mask, prevByte, prevByte2, literalContextLut, numLiteralContexts, literalContextMap, commands, mb)
 		} else {
-			buildMetaBlock(data, uint(wrapped_last_flush_pos), mask, &block_params, prev_byte, prev_byte2, commands, literal_context_mode, mb)
+			buildMetaBlock(data, uint(wrappedLastFlushPos), mask, &blockParams, prevByte, prevByte2, commands, literalContextMode, mb)
 		}
 
 		if params.quality >= minQualityForOptimizeHistograms {
 			/* The number of distance symbols effectively used for distance
 			   histograms. It might be less than distance alphabet size
 			   for "Large Window Brotli" (32-bit). */
-			var num_effective_dist_codes uint32 = block_params.dist.alphabet_size
-			if num_effective_dist_codes > numHistogramDistanceSymbols {
-				num_effective_dist_codes = numHistogramDistanceSymbols
+			var numEffectiveDistCodes uint32 = blockParams.dist.alphabetSize
+			if numEffectiveDistCodes > numHistogramDistanceSymbols {
+				numEffectiveDistCodes = numHistogramDistanceSymbols
 			}
 
-			optimizeHistograms(num_effective_dist_codes, mb)
+			optimizeHistograms(numEffectiveDistCodes, mb)
 		}
 
-		storeMetaBlock(data, uint(wrapped_last_flush_pos), bytes, mask, prev_byte, prev_byte2, is_last, &block_params, literal_context_mode, commands, mb, storage_ix, storage)
+		storeMetaBlock(data, uint(wrappedLastFlushPos), bytes, mask, prevByte, prevByte2, isLast, &blockParams, literalContextMode, commands, mb, storageIx, storage)
 		freeMetaBlockSplit(mb)
 	}
 
-	if bytes+4 < *storage_ix>>3 {
+	if bytes+4 < *storageIx>>3 {
 		/* Restore the distance cache and last byte. */
-		copy(dist_cache, saved_dist_cache[:4])
+		copy(distCache, savedDistCache[:4])
 
-		storage[0] = byte(last_bytes)
-		storage[1] = byte(last_bytes >> 8)
-		*storage_ix = uint(last_bytes_bits)
-		storeUncompressedMetaBlock(is_last, data, uint(wrapped_last_flush_pos), mask, bytes, storage_ix, storage)
+		storage[0] = byte(lastBytes)
+		storage[1] = byte(lastBytes >> 8)
+		*storageIx = uint(lastBytesBits)
+		storeUncompressedMetaBlock(isLast, data, uint(wrappedLastFlushPos), mask, bytes, storageIx, storage)
 	}
 }
 
 func chooseDistanceParams(params *encoderParams) {
-	var distance_postfix_bits uint32 = 0
+	var distancePostfixBits uint32 = 0
 	var num_direct_distance_codes uint32 = 0
 
 	if params.quality >= minQualityForNonzeroDistanceParams {
-		var ndirect_msb uint32
+		var ndirectMsb uint32
 		if params.mode == modeFont {
-			distance_postfix_bits = 1
+			distancePostfixBits = 1
 			num_direct_distance_codes = 12
 		} else {
-			distance_postfix_bits = params.dist.distance_postfix_bits
-			num_direct_distance_codes = params.dist.num_direct_distance_codes
+			distancePostfixBits = params.dist.distancePostfixBits
+			num_direct_distance_codes = params.dist.numDirectDistanceCodes
 		}
 
-		ndirect_msb = (num_direct_distance_codes >> distance_postfix_bits) & 0x0F
-		if distance_postfix_bits > maxNpostfix || num_direct_distance_codes > maxNdirect || ndirect_msb<<distance_postfix_bits != num_direct_distance_codes {
-			distance_postfix_bits = 0
+		ndirectMsb = (num_direct_distance_codes >> distancePostfixBits) & 0x0F
+		if distancePostfixBits > maxNpostfix || num_direct_distance_codes > maxNdirect || ndirectMsb<<distancePostfixBits != num_direct_distance_codes {
+			distancePostfixBits = 0
 			num_direct_distance_codes = 0
 		}
 	}
 
-	initDistanceParams(params, distance_postfix_bits, num_direct_distance_codes)
+	initDistanceParams(params, distancePostfixBits, num_direct_distance_codes)
 }
 
 func ensureInitialized(s *Writer) bool {
-	if s.is_initialized_ {
+	if s.isInitialized {
 		return true
 	}
 
-	s.last_bytes_bits_ = 0
-	s.last_bytes_ = 0
-	s.remaining_metadata_bytes_ = math.MaxUint32
+	s.lastBytesBits = 0
+	s.lastBytes = 0
+	s.remainingMetadataBytes = math.MaxUint32
 
 	sanitizeParams(&s.params)
 	s.params.lgblock = computeLgBlock(&s.params)
@@ -550,14 +550,14 @@ func ensureInitialized(s *Writer) bool {
 	{
 		var lgwin int = int(s.params.lgwin)
 		if s.params.quality == fastOnePassCompressionQuality || s.params.quality == fastTwoPassCompressionQuality {
-			lgwin = brotli_max_int(lgwin, 18)
+			lgwin = brotliMaxInt(lgwin, 18)
 		}
 
-		encodeWindowBits(lgwin, s.params.large_window, &s.last_bytes_, &s.last_bytes_bits_)
+		encodeWindowBits(lgwin, s.params.largeWindow, &s.lastBytes, &s.lastBytesBits)
 	}
 
 	if s.params.quality == fastOnePassCompressionQuality {
-		s.cmd_depths_ = [128]byte{
+		s.cmdDepths = [128]byte{
 			0, 4, 4, 5, 6, 6, 7, 7, 7, 7, 7, 8, 8, 8, 8, 8,
 			0, 0, 0, 4, 4, 4, 4, 4, 5, 5, 6, 6, 6, 6, 7, 7,
 			7, 7, 10, 10, 10, 10, 10, 10, 0, 4, 4, 5, 5, 5, 6, 6,
@@ -567,7 +567,7 @@ func ensureInitialized(s *Writer) bool {
 			4, 4, 4, 5, 5, 5, 5, 5, 5, 6, 6, 7, 7, 7, 8, 10,
 			12, 12, 12, 12, 12, 12, 12, 12, 12, 12, 12, 12,
 		}
-		s.cmd_bits_ = [128]uint16{
+		s.cmdBits = [128]uint16{
 			0, 0, 8, 9, 3, 35, 7, 71,
 			39, 103, 23, 47, 175, 111, 239, 31,
 			0, 0, 0, 4, 12, 2, 10, 6,
@@ -581,65 +581,65 @@ func ensureInitialized(s *Writer) bool {
 			2, 10, 6, 21, 13, 29, 3, 19, 11, 15, 47, 31, 95, 63, 127, 255,
 			767, 2815, 1791, 3839, 511, 2559, 1535, 3583, 1023, 3071, 2047, 4095,
 		}
-		s.cmd_code_ = [512]byte{
+		s.cmdCode = [512]byte{
 			0xff, 0x77, 0xd5, 0xbf, 0xe7, 0xde, 0xea, 0x9e, 0x51, 0x5d, 0xde, 0xc6,
 			0x70, 0x57, 0xbc, 0x58, 0x58, 0x58, 0xd8, 0xd8, 0x58, 0xd5, 0xcb, 0x8c,
 			0xea, 0xe0, 0xc3, 0x87, 0x1f, 0x83, 0xc1, 0x60, 0x1c, 0x67, 0xb2, 0xaa,
 			0x06, 0x83, 0xc1, 0x60, 0x30, 0x18, 0xcc, 0xa1, 0xce, 0x88, 0x54, 0x94,
 			0x46, 0xe1, 0xb0, 0xd0, 0x4e, 0xb2, 0xf7, 0x04, 0x00,
 		}
-		s.cmd_code_numbits_ = 448
+		s.cmdCodeNumbits = 448
 	}
 
-	s.is_initialized_ = true
+	s.isInitialized = true
 	return true
 }
 
 func encoderInitParams(params *encoderParams) {
 	params.mode = defaultMode
-	params.large_window = false
+	params.largeWindow = false
 	params.quality = defaultQuality
 	params.lgwin = defaultWindow
 	params.lgblock = 0
-	params.size_hint = 0
-	params.disable_literal_context_modeling = false
+	params.sizeHint = 0
+	params.disableLiteralContextModeling = false
 	initEncoderDictionary(&params.dictionary)
-	params.dist.distance_postfix_bits = 0
-	params.dist.num_direct_distance_codes = 0
-	params.dist.alphabet_size = uint32(distanceAlphabetSize(0, 0, maxDistanceBits))
-	params.dist.max_distance = maxDistance
+	params.dist.distancePostfixBits = 0
+	params.dist.numDirectDistanceCodes = 0
+	params.dist.alphabetSize = uint32(distanceAlphabetSize(0, 0, maxDistanceBits))
+	params.dist.maxDistance = maxDistanceConst
 }
 
 func encoderInitState(s *Writer) {
 	encoderInitParams(&s.params)
-	s.input_pos_ = 0
+	s.inputPos = 0
 	s.commands = s.commands[:0]
-	s.num_literals_ = 0
-	s.last_insert_len_ = 0
-	s.last_flush_pos_ = 0
-	s.last_processed_pos_ = 0
-	s.prev_byte_ = 0
-	s.prev_byte2_ = 0
+	s.numLiterals = 0
+	s.lastInsertLen = 0
+	s.lastFlushPos = 0
+	s.lastProcessedPos = 0
+	s.prevByte = 0
+	s.prevByte2 = 0
 	if s.hasher_ != nil {
 		s.hasher_.Common().is_prepared_ = false
 	}
-	s.cmd_code_numbits_ = 0
-	s.stream_state_ = streamProcessing
-	s.is_last_block_emitted_ = false
-	s.is_initialized_ = false
+	s.cmdCodeNumbits = 0
+	s.streamState = streamProcessing
+	s.isLastBlockEmitted = false
+	s.isInitialized = false
 
 	ringBufferInit(&s.ringbuffer_)
 
 	/* Initialize distance cache. */
-	s.dist_cache_[0] = 4
+	s.distCache[0] = 4
 
-	s.dist_cache_[1] = 11
-	s.dist_cache_[2] = 15
-	s.dist_cache_[3] = 16
+	s.distCache[1] = 11
+	s.distCache[2] = 15
+	s.distCache[3] = 16
 
 	/* Save the state of the distance cache in case we need to restore it for
 	   emitting an uncompressed block. */
-	copy(s.saved_dist_cache_[:], s.dist_cache_[:])
+	copy(s.savedDistCache[:], s.distCache[:])
 }
 
 /*
@@ -649,10 +649,10 @@ called multiple times before calling WriteBrotliData() to process the
 accumulated input. At most input_block_size() bytes of input data can be
 copied to the ring buffer, otherwise the next WriteBrotliData() will fail.
 */
-func copyInputToRingBuffer(s *Writer, input_size uint, input_buffer []byte) {
+func copyInputToRingBuffer(s *Writer, inputSize uint, inputBuffer []byte) {
 	var ringbuffer_ *ringBuffer = &s.ringbuffer_
-	ringBufferWrite(input_buffer, input_size, ringbuffer_)
-	s.input_pos_ += uint64(input_size)
+	ringBufferWrite(inputBuffer, inputSize, ringbuffer_)
+	s.inputPos += uint64(inputSize)
 
 	/* TL;DR: If needed, initialize 7 more bytes in the ring buffer to make the
 	   hashing not depend on uninitialized data. This makes compression
@@ -708,38 +708,38 @@ Marks all input as processed.
 	Returns true if position wrapping occurs.
 */
 func updateLastProcessedPos(s *Writer) bool {
-	var wrapped_last_processed_pos uint32 = wrapPosition(s.last_processed_pos_)
-	var wrapped_input_pos uint32 = wrapPosition(s.input_pos_)
-	s.last_processed_pos_ = s.input_pos_
-	return wrapped_input_pos < wrapped_last_processed_pos
+	var wrappedLastProcessedPos uint32 = wrapPosition(s.lastProcessedPos)
+	var wrappedInputPos uint32 = wrapPosition(s.inputPos)
+	s.lastProcessedPos = s.inputPos
+	return wrappedInputPos < wrappedLastProcessedPos
 }
 
-func extendLastCommand(s *Writer, bytes *uint32, wrapped_last_processed_pos *uint32) {
-	var last_command *command = &s.commands[len(s.commands)-1]
+func extendLastCommand(s *Writer, bytes *uint32, wrappedLastProcessedPos *uint32) {
+	var lastCommand *command = &s.commands[len(s.commands)-1]
 	var data []byte = s.ringbuffer_.buffer_
 	var mask uint32 = s.ringbuffer_.mask_
-	var max_backward_distance uint64 = ((uint64(1)) << s.params.lgwin) - windowGap
-	var last_copy_len uint64 = uint64(last_command.copy_len_) & 0x1FFFFFF
-	var last_processed_pos uint64 = s.last_processed_pos_ - last_copy_len
-	var max_distance uint64
-	if last_processed_pos < max_backward_distance {
-		max_distance = last_processed_pos
+	var maxBackwardDistance uint64 = ((uint64(1)) << s.params.lgwin) - windowGap
+	var lastCopyLen uint64 = uint64(lastCommand.copy_len_) & 0x1FFFFFF
+	var lastProcessedPos uint64 = s.lastProcessedPos - lastCopyLen
+	var maxDistance uint64
+	if lastProcessedPos < maxBackwardDistance {
+		maxDistance = lastProcessedPos
 	} else {
-		max_distance = max_backward_distance
+		maxDistance = maxBackwardDistance
 	}
-	var cmd_dist uint64 = uint64(s.dist_cache_[0])
-	var distance_code uint32 = commandRestoreDistanceCode(last_command, &s.params.dist)
-	if distance_code < numDistanceShortCodes || uint64(distance_code-(numDistanceShortCodes-1)) == cmd_dist {
-		if cmd_dist <= max_distance {
-			for *bytes != 0 && data[*wrapped_last_processed_pos&mask] == data[(uint64(*wrapped_last_processed_pos)-cmd_dist)&uint64(mask)] {
-				last_command.copy_len_++
-				(*bytes)--
-				(*wrapped_last_processed_pos)++
+	var cmdDist uint64 = uint64(s.distCache[0])
+	var distanceCode uint32 = commandRestoreDistanceCode(lastCommand, &s.params.dist)
+	if distanceCode < numDistanceShortCodes || uint64(distanceCode-(numDistanceShortCodes-1)) == cmdDist {
+		if cmdDist <= maxDistance {
+			for *bytes != 0 && data[*wrappedLastProcessedPos&mask] == data[(uint64(*wrappedLastProcessedPos)-cmdDist)&uint64(mask)] {
+				lastCommand.copy_len_++
+				*bytes--
+				*wrappedLastProcessedPos++
 			}
 		}
 
 		/* The copy length is at most the metablock size, and thus expressible. */
-		getLengthCode(uint(last_command.insert_len_), uint(int(last_command.copy_len_&0x1FFFFFF)+int(last_command.copy_len_>>25)), (last_command.dist_prefix_&0x3FF == 0), &last_command.cmd_prefix_)
+		getLengthCode(uint(lastCommand.insert_len_), uint(int(lastCommand.copy_len_&0x1FFFFFF)+int(lastCommand.copy_len_>>25)), lastCommand.dist_prefix_&0x3FF == 0, &lastCommand.cmd_prefix_)
 	}
 }
 
@@ -754,23 +754,23 @@ bits use WriteMetadata() to append an empty meta-data block.
 Returns false if the size of the input data is larger than
 input_block_size().
 */
-func encodeData(s *Writer, is_last bool, force_flush bool) bool {
+func encodeData(s *Writer, isLast bool, forceFlush bool) bool {
 	var delta uint64 = unprocessedInputSize(s)
 	var bytes uint32 = uint32(delta)
-	var wrapped_last_processed_pos uint32 = wrapPosition(s.last_processed_pos_)
+	var wrappedLastProcessedPos uint32 = wrapPosition(s.lastProcessedPos)
 	var data []byte
 	var mask uint32
-	var literal_context_mode int
+	var literalContextMode int
 
 	data = s.ringbuffer_.buffer_
 	mask = s.ringbuffer_.mask_
 
 	/* Adding more blocks after "last" block is forbidden. */
-	if s.is_last_block_emitted_ {
+	if s.isLastBlockEmitted {
 		return false
 	}
-	if is_last {
-		s.is_last_block_emitted_ = true
+	if isLast {
+		s.isLastBlockEmitted = true
 	}
 
 	if delta > uint64(inputBlockSize(s)) {
@@ -778,41 +778,41 @@ func encodeData(s *Writer, is_last bool, force_flush bool) bool {
 	}
 
 	if s.params.quality == fastTwoPassCompressionQuality {
-		if s.command_buf_ == nil || cap(s.command_buf_) < int(kCompressFragmentTwoPassBlockSize) {
-			s.command_buf_ = make([]uint32, kCompressFragmentTwoPassBlockSize)
-			s.literal_buf_ = make([]byte, kCompressFragmentTwoPassBlockSize)
+		if s.commandBuf == nil || cap(s.commandBuf) < int(kCompressFragmentTwoPassBlockSize) {
+			s.commandBuf = make([]uint32, kCompressFragmentTwoPassBlockSize)
+			s.literalBuf = make([]byte, kCompressFragmentTwoPassBlockSize)
 		} else {
-			s.command_buf_ = s.command_buf_[:kCompressFragmentTwoPassBlockSize]
-			s.literal_buf_ = s.literal_buf_[:kCompressFragmentTwoPassBlockSize]
+			s.commandBuf = s.commandBuf[:kCompressFragmentTwoPassBlockSize]
+			s.literalBuf = s.literalBuf[:kCompressFragmentTwoPassBlockSize]
 		}
 	}
 
 	if s.params.quality == fastOnePassCompressionQuality || s.params.quality == fastTwoPassCompressionQuality {
 		var storage []byte
-		var storage_ix uint = uint(s.last_bytes_bits_)
-		var table_size uint
+		var storageIx uint = uint(s.lastBytesBits)
+		var tableSize uint
 		var table []int
 
-		if delta == 0 && !is_last {
+		if delta == 0 && !isLast {
 			/* We have no new input data and we don't have to finish the stream, so
 			   nothing to do. */
 			return true
 		}
 
 		storage = s.getStorage(int(2*bytes + 503))
-		storage[0] = byte(s.last_bytes_)
-		storage[1] = byte(s.last_bytes_ >> 8)
-		table = getHashTable(s, s.params.quality, uint(bytes), &table_size)
+		storage[0] = byte(s.lastBytes)
+		storage[1] = byte(s.lastBytes >> 8)
+		table = getHashTable(s, s.params.quality, uint(bytes), &tableSize)
 		if s.params.quality == fastOnePassCompressionQuality {
-			compressFragmentFast(data[wrapped_last_processed_pos&mask:], uint(bytes), is_last, table, table_size, s.cmd_depths_[:], s.cmd_bits_[:], &s.cmd_code_numbits_, s.cmd_code_[:], &storage_ix, storage)
+			compressFragmentFast(data[wrappedLastProcessedPos&mask:], uint(bytes), isLast, table, tableSize, s.cmdDepths[:], s.cmdBits[:], &s.cmdCodeNumbits, s.cmdCode[:], &storageIx, storage)
 		} else {
-			compressFragmentTwoPass(data[wrapped_last_processed_pos&mask:], uint(bytes), is_last, s.command_buf_, s.literal_buf_, table, table_size, &storage_ix, storage)
+			compressFragmentTwoPass(data[wrappedLastProcessedPos&mask:], uint(bytes), isLast, s.commandBuf, s.literalBuf, table, tableSize, &storageIx, storage)
 		}
 
-		s.last_bytes_ = uint16(storage[storage_ix>>3])
-		s.last_bytes_bits_ = byte(storage_ix & 7)
+		s.lastBytes = uint16(storage[storageIx>>3])
+		s.lastBytesBits = byte(storageIx & 7)
 		updateLastProcessedPos(s)
-		s.writeOutput(storage[:storage_ix>>3])
+		s.writeOutput(storage[:storageIx>>3])
 		return true
 	}
 	{
@@ -823,45 +823,45 @@ func encodeData(s *Writer, is_last bool, force_flush bool) bool {
 			   without reallocation: that would impact speed. */
 			newsize += int(bytes/4) + 16
 
-			new_commands := make([]command, len(s.commands), newsize)
+			newCommands := make([]command, len(s.commands), newsize)
 			if s.commands != nil {
-				copy(new_commands, s.commands)
+				copy(newCommands, s.commands)
 			}
 
-			s.commands = new_commands
+			s.commands = newCommands
 		}
 	}
 
-	initOrStitchToPreviousBlock(&s.hasher_, data, uint(mask), &s.params, uint(wrapped_last_processed_pos), uint(bytes), is_last)
+	initOrStitchToPreviousBlock(&s.hasher_, data, uint(mask), &s.params, uint(wrappedLastProcessedPos), uint(bytes), isLast)
 
-	literal_context_mode = chooseContextMode(&s.params, data, uint(wrapPosition(s.last_flush_pos_)), uint(mask), uint(s.input_pos_-s.last_flush_pos_))
+	literalContextMode = chooseContextMode(&s.params, data, uint(wrapPosition(s.lastFlushPos)), uint(mask), uint(s.inputPos-s.lastFlushPos))
 
-	if len(s.commands) != 0 && s.last_insert_len_ == 0 {
-		extendLastCommand(s, &bytes, &wrapped_last_processed_pos)
+	if len(s.commands) != 0 && s.lastInsertLen == 0 {
+		extendLastCommand(s, &bytes, &wrappedLastProcessedPos)
 	}
 
 	if s.params.quality == zopflificationQuality {
 		assert(s.params.hasher.type_ == 10)
-		createZopfliBackwardReferences(uint(bytes), uint(wrapped_last_processed_pos), data, uint(mask), &s.params, s.hasher_.(*h10), s.dist_cache_[:], &s.last_insert_len_, &s.commands, &s.num_literals_)
+		createZopfliBackwardReferences(uint(bytes), uint(wrappedLastProcessedPos), data, uint(mask), &s.params, s.hasher_.(*h10), s.distCache[:], &s.lastInsertLen, &s.commands, &s.numLiterals)
 	} else if s.params.quality == hqZopflificationQuality {
 		assert(s.params.hasher.type_ == 10)
-		createHqZopfliBackwardReferences(uint(bytes), uint(wrapped_last_processed_pos), data, uint(mask), &s.params, s.hasher_, s.dist_cache_[:], &s.last_insert_len_, &s.commands, &s.num_literals_)
+		createHqZopfliBackwardReferences(uint(bytes), uint(wrappedLastProcessedPos), data, uint(mask), &s.params, s.hasher_, s.distCache[:], &s.lastInsertLen, &s.commands, &s.numLiterals)
 	} else {
-		createBackwardReferences(uint(bytes), uint(wrapped_last_processed_pos), data, uint(mask), &s.params, s.hasher_, s.dist_cache_[:], &s.last_insert_len_, &s.commands, &s.num_literals_)
+		createBackwardReferences(uint(bytes), uint(wrappedLastProcessedPos), data, uint(mask), &s.params, s.hasher_, s.distCache[:], &s.lastInsertLen, &s.commands, &s.numLiterals)
 	}
 	{
-		var max_length uint = maxMetablockSize(&s.params)
-		var max_literals uint = max_length / 8
-		max_commands := int(max_length / 8)
-		var processed_bytes uint = uint(s.input_pos_ - s.last_flush_pos_)
-		var next_input_fits_metablock bool = (processed_bytes+inputBlockSize(s) <= max_length)
-		var should_flush bool = (s.params.quality < minQualityForBlockSplit && s.num_literals_+uint(len(s.commands)) >= maxNumDelayedSymbols)
+		var maxLength uint = maxMetablockSize(&s.params)
+		var maxLiterals uint = maxLength / 8
+		maxCommands := int(maxLength / 8)
+		var processedBytes uint = uint(s.inputPos - s.lastFlushPos)
+		var nextInputFitsMetablock bool = processedBytes+inputBlockSize(s) <= maxLength
+		var shouldFlush bool = s.params.quality < minQualityForBlockSplit && s.numLiterals+uint(len(s.commands)) >= maxNumDelayedSymbols
 		/* If maximal possible additional block doesn't fit metablock, flush now. */
 		/* TODO: Postpone decision until next block arrives? */
 
 		/* If block splitting is not used, then flush as soon as there is some
 		   amount of commands / literals produced. */
-		if !is_last && !force_flush && !should_flush && next_input_fits_metablock && s.num_literals_ < max_literals && len(s.commands) < max_commands {
+		if !isLast && !forceFlush && !shouldFlush && nextInputFitsMetablock && s.numLiterals < maxLiterals && len(s.commands) < maxCommands {
 			/* Merge with next input block. Everything will happen later. */
 			if updateLastProcessedPos(s) {
 				hasherReset(s.hasher_)
@@ -872,51 +872,51 @@ func encodeData(s *Writer, is_last bool, force_flush bool) bool {
 	}
 
 	/* Create the last insert-only command. */
-	if s.last_insert_len_ > 0 {
-		s.commands = append(s.commands, makeInsertCommand(s.last_insert_len_))
-		s.num_literals_ += s.last_insert_len_
-		s.last_insert_len_ = 0
+	if s.lastInsertLen > 0 {
+		s.commands = append(s.commands, makeInsertCommand(s.lastInsertLen))
+		s.numLiterals += s.lastInsertLen
+		s.lastInsertLen = 0
 	}
 
-	if !is_last && s.input_pos_ == s.last_flush_pos_ {
+	if !isLast && s.inputPos == s.lastFlushPos {
 		/* We have no new input data and we don't have to finish the stream, so
 		   nothing to do. */
 		return true
 	}
 
-	assert(s.input_pos_ >= s.last_flush_pos_)
-	assert(s.input_pos_ > s.last_flush_pos_ || is_last)
-	assert(s.input_pos_-s.last_flush_pos_ <= 1<<24)
+	assert(s.inputPos >= s.lastFlushPos)
+	assert(s.inputPos > s.lastFlushPos || isLast)
+	assert(s.inputPos-s.lastFlushPos <= 1<<24)
 	{
-		var metablock_size uint32 = uint32(s.input_pos_ - s.last_flush_pos_)
-		var storage []byte = s.getStorage(int(2*metablock_size + 503))
-		var storage_ix uint = uint(s.last_bytes_bits_)
-		storage[0] = byte(s.last_bytes_)
-		storage[1] = byte(s.last_bytes_ >> 8)
-		writeMetaBlockInternal(data, uint(mask), s.last_flush_pos_, uint(metablock_size), is_last, literal_context_mode, &s.params, s.prev_byte_, s.prev_byte2_, s.num_literals_, s.commands, s.saved_dist_cache_[:], s.dist_cache_[:], &storage_ix, storage)
-		s.last_bytes_ = uint16(storage[storage_ix>>3])
-		s.last_bytes_bits_ = byte(storage_ix & 7)
-		s.last_flush_pos_ = s.input_pos_
+		var metablockSize uint32 = uint32(s.inputPos - s.lastFlushPos)
+		var storage []byte = s.getStorage(int(2*metablockSize + 503))
+		var storageIx uint = uint(s.lastBytesBits)
+		storage[0] = byte(s.lastBytes)
+		storage[1] = byte(s.lastBytes >> 8)
+		writeMetaBlockInternal(data, uint(mask), s.lastFlushPos, uint(metablockSize), isLast, literalContextMode, &s.params, s.prevByte, s.prevByte2, s.numLiterals, s.commands, s.savedDistCache[:], s.distCache[:], &storageIx, storage)
+		s.lastBytes = uint16(storage[storageIx>>3])
+		s.lastBytesBits = byte(storageIx & 7)
+		s.lastFlushPos = s.inputPos
 		if updateLastProcessedPos(s) {
 			hasherReset(s.hasher_)
 		}
 
-		if s.last_flush_pos_ > 0 {
-			s.prev_byte_ = data[(uint32(s.last_flush_pos_)-1)&mask]
+		if s.lastFlushPos > 0 {
+			s.prevByte = data[(uint32(s.lastFlushPos)-1)&mask]
 		}
 
-		if s.last_flush_pos_ > 1 {
-			s.prev_byte2_ = data[uint32(s.last_flush_pos_-2)&mask]
+		if s.lastFlushPos > 1 {
+			s.prevByte2 = data[uint32(s.lastFlushPos-2)&mask]
 		}
 
 		s.commands = s.commands[:0]
-		s.num_literals_ = 0
+		s.numLiterals = 0
 
 		/* Save the state of the distance cache in case we need to restore it for
 		   emitting an uncompressed block. */
-		copy(s.saved_dist_cache_[:], s.dist_cache_[:])
+		copy(s.savedDistCache[:], s.distCache[:])
 
-		s.writeOutput(storage[:storage_ix>>3])
+		s.writeOutput(storage[:storageIx>>3])
 		return true
 	}
 }
@@ -928,86 +928,86 @@ Dumps remaining output bits and metadata header to |header|.
 	REQUIRED: |header| should be 8-byte aligned and at least 16 bytes long.
 	REQUIRED: |block_size| <= (1 << 24).
 */
-func writeMetadataHeader(s *Writer, block_size uint, header []byte) uint {
-	storage_ix := uint(s.last_bytes_bits_)
-	header[0] = byte(s.last_bytes_)
-	header[1] = byte(s.last_bytes_ >> 8)
-	s.last_bytes_ = 0
-	s.last_bytes_bits_ = 0
+func writeMetadataHeader(s *Writer, blockSize uint, header []byte) uint {
+	storageIx := uint(s.lastBytesBits)
+	header[0] = byte(s.lastBytes)
+	header[1] = byte(s.lastBytes >> 8)
+	s.lastBytes = 0
+	s.lastBytesBits = 0
 
-	writeBits(1, 0, &storage_ix, header)
-	writeBits(2, 3, &storage_ix, header)
-	writeBits(1, 0, &storage_ix, header)
-	if block_size == 0 {
-		writeBits(2, 0, &storage_ix, header)
+	writeBits(1, 0, &storageIx, header)
+	writeBits(2, 3, &storageIx, header)
+	writeBits(1, 0, &storageIx, header)
+	if blockSize == 0 {
+		writeBits(2, 0, &storageIx, header)
 	} else {
 		var nbits uint32
-		if block_size == 1 {
+		if blockSize == 1 {
 			nbits = 0
 		} else {
-			nbits = log2FloorNonZero(uint(uint32(block_size)-1)) + 1
+			nbits = log2FloorNonZero(uint(uint32(blockSize)-1)) + 1
 		}
 		var nbytes uint32 = (nbits + 7) / 8
-		writeBits(2, uint64(nbytes), &storage_ix, header)
-		writeBits(uint(8*nbytes), uint64(block_size)-1, &storage_ix, header)
+		writeBits(2, uint64(nbytes), &storageIx, header)
+		writeBits(uint(8*nbytes), uint64(blockSize)-1, &storageIx, header)
 	}
 
-	return (storage_ix + 7) >> 3
+	return (storageIx + 7) >> 3
 }
 
 func injectBytePaddingBlock(s *Writer) {
-	var seal uint32 = uint32(s.last_bytes_)
-	var seal_bits uint = uint(s.last_bytes_bits_)
-	s.last_bytes_ = 0
-	s.last_bytes_bits_ = 0
+	var seal uint32 = uint32(s.lastBytes)
+	var sealBits uint = uint(s.lastBytesBits)
+	s.lastBytes = 0
+	s.lastBytesBits = 0
 
 	/* is_last = 0, data_nibbles = 11, reserved = 0, meta_nibbles = 00 */
-	seal |= 0x6 << seal_bits
+	seal |= 0x6 << sealBits
 
-	seal_bits += 6
+	sealBits += 6
 
-	destination := s.tiny_buf_.u8[:]
+	destination := s.tinyBuf.u8[:]
 
 	destination[0] = byte(seal)
-	if seal_bits > 8 {
+	if sealBits > 8 {
 		destination[1] = byte(seal >> 8)
 	}
-	if seal_bits > 16 {
+	if sealBits > 16 {
 		destination[2] = byte(seal >> 16)
 	}
-	s.writeOutput(destination[:(seal_bits+7)>>3])
+	s.writeOutput(destination[:(sealBits+7)>>3])
 }
 
 func checkFlushComplete(s *Writer) {
-	if s.stream_state_ == streamFlushRequested && s.err == nil {
-		s.stream_state_ = streamProcessing
+	if s.streamState == streamFlushRequested && s.err == nil {
+		s.streamState = streamProcessing
 	}
 }
 
-func encoderCompressStreamFast(s *Writer, op int, available_in *uint, next_in *[]byte) bool {
-	var block_size_limit uint = uint(1) << s.params.lgwin
-	var buf_size uint = brotli_min_size_t(kCompressFragmentTwoPassBlockSize, brotli_min_size_t(*available_in, block_size_limit))
-	var command_buf []uint32 = nil
-	var literal_buf []byte = nil
+func encoderCompressStreamFast(s *Writer, op int, availableIn *uint, nextIn *[]byte) bool {
+	var blockSizeLimit uint = uint(1) << s.params.lgwin
+	var bufSize uint = brotliMinSizeT(kCompressFragmentTwoPassBlockSize, brotliMinSizeT(*availableIn, blockSizeLimit))
+	var commandBuf []uint32 = nil
+	var literalBuf []byte = nil
 	if s.params.quality != fastOnePassCompressionQuality && s.params.quality != fastTwoPassCompressionQuality {
 		return false
 	}
 
 	if s.params.quality == fastTwoPassCompressionQuality {
-		if s.command_buf_ == nil || cap(s.command_buf_) < int(buf_size) {
-			s.command_buf_ = make([]uint32, buf_size)
-			s.literal_buf_ = make([]byte, buf_size)
+		if s.commandBuf == nil || cap(s.commandBuf) < int(bufSize) {
+			s.commandBuf = make([]uint32, bufSize)
+			s.literalBuf = make([]byte, bufSize)
 		} else {
-			s.command_buf_ = s.command_buf_[:buf_size]
-			s.literal_buf_ = s.literal_buf_[:buf_size]
+			s.commandBuf = s.commandBuf[:bufSize]
+			s.literalBuf = s.literalBuf[:bufSize]
 		}
 
-		command_buf = s.command_buf_
-		literal_buf = s.literal_buf_
+		commandBuf = s.commandBuf
+		literalBuf = s.literalBuf
 	}
 
 	for {
-		if s.stream_state_ == streamFlushRequested && s.last_bytes_bits_ != 0 {
+		if s.streamState == streamFlushRequested && s.lastBytesBits != 0 {
 			injectBytePaddingBlock(s)
 			continue
 		}
@@ -1015,46 +1015,46 @@ func encoderCompressStreamFast(s *Writer, op int, available_in *uint, next_in *[
 		/* Compress block only when stream is not
 		   finished, there is no pending flush request, and there is either
 		   additional input or pending operation. */
-		if s.stream_state_ == streamProcessing && (*available_in != 0 || op != int(operationProcess)) {
-			var block_size uint = brotli_min_size_t(block_size_limit, *available_in)
-			var is_last bool = (*available_in == block_size) && (op == int(operationFinish))
-			var force_flush bool = (*available_in == block_size) && (op == int(operationFlush))
-			var max_out_size uint = 2*block_size + 503
+		if s.streamState == streamProcessing && (*availableIn != 0 || op != int(operationProcess)) {
+			var blockSize uint = brotliMinSizeT(blockSizeLimit, *availableIn)
+			var isLast bool = (*availableIn == blockSize) && (op == int(operationFinish))
+			var forceFlush bool = (*availableIn == blockSize) && (op == int(operationFlush))
+			var maxOutSize uint = 2*blockSize + 503
 			var storage []byte = nil
-			var storage_ix uint = uint(s.last_bytes_bits_)
-			var table_size uint
+			var storageIx uint = uint(s.lastBytesBits)
+			var tableSize uint
 			var table []int
 
-			if force_flush && block_size == 0 {
-				s.stream_state_ = streamFlushRequested
+			if forceFlush && blockSize == 0 {
+				s.streamState = streamFlushRequested
 				continue
 			}
 
-			storage = s.getStorage(int(max_out_size))
+			storage = s.getStorage(int(maxOutSize))
 
-			storage[0] = byte(s.last_bytes_)
-			storage[1] = byte(s.last_bytes_ >> 8)
-			table = getHashTable(s, s.params.quality, block_size, &table_size)
+			storage[0] = byte(s.lastBytes)
+			storage[1] = byte(s.lastBytes >> 8)
+			table = getHashTable(s, s.params.quality, blockSize, &tableSize)
 
 			if s.params.quality == fastOnePassCompressionQuality {
-				compressFragmentFast(*next_in, block_size, is_last, table, table_size, s.cmd_depths_[:], s.cmd_bits_[:], &s.cmd_code_numbits_, s.cmd_code_[:], &storage_ix, storage)
+				compressFragmentFast(*nextIn, blockSize, isLast, table, tableSize, s.cmdDepths[:], s.cmdBits[:], &s.cmdCodeNumbits, s.cmdCode[:], &storageIx, storage)
 			} else {
-				compressFragmentTwoPass(*next_in, block_size, is_last, command_buf, literal_buf, table, table_size, &storage_ix, storage)
+				compressFragmentTwoPass(*nextIn, blockSize, isLast, commandBuf, literalBuf, table, tableSize, &storageIx, storage)
 			}
 
-			*next_in = (*next_in)[block_size:]
-			*available_in -= block_size
-			var out_bytes uint = storage_ix >> 3
-			s.writeOutput(storage[:out_bytes])
+			*nextIn = (*nextIn)[blockSize:]
+			*availableIn -= blockSize
+			var outBytes uint = storageIx >> 3
+			s.writeOutput(storage[:outBytes])
 
-			s.last_bytes_ = uint16(storage[storage_ix>>3])
-			s.last_bytes_bits_ = byte(storage_ix & 7)
+			s.lastBytes = uint16(storage[storageIx>>3])
+			s.lastBytesBits = byte(storageIx & 7)
 
-			if force_flush {
-				s.stream_state_ = streamFlushRequested
+			if forceFlush {
+				s.streamState = streamFlushRequested
 			}
-			if is_last {
-				s.stream_state_ = streamFinished
+			if isLast {
+				s.streamState = streamFinished
 			}
 			continue
 		}
@@ -1066,28 +1066,28 @@ func encoderCompressStreamFast(s *Writer, op int, available_in *uint, next_in *[
 	return true
 }
 
-func processMetadata(s *Writer, available_in *uint, next_in *[]byte) bool {
-	if *available_in > 1<<24 {
+func processMetadata(s *Writer, availableIn *uint, nextIn *[]byte) bool {
+	if *availableIn > 1<<24 {
 		return false
 	}
 
 	/* Switch to metadata block workflow, if required. */
-	if s.stream_state_ == streamProcessing {
-		s.remaining_metadata_bytes_ = uint32(*available_in)
-		s.stream_state_ = streamMetadataHead
+	if s.streamState == streamProcessing {
+		s.remainingMetadataBytes = uint32(*availableIn)
+		s.streamState = streamMetadataHead
 	}
 
-	if s.stream_state_ != streamMetadataHead && s.stream_state_ != streamMetadataBody {
+	if s.streamState != streamMetadataHead && s.streamState != streamMetadataBody {
 		return false
 	}
 
 	for {
-		if s.stream_state_ == streamFlushRequested && s.last_bytes_bits_ != 0 {
+		if s.streamState == streamFlushRequested && s.lastBytesBits != 0 {
 			injectBytePaddingBlock(s)
 			continue
 		}
 
-		if s.input_pos_ != s.last_flush_pos_ {
+		if s.inputPos != s.lastFlushPos {
 			var result bool = encodeData(s, false, true)
 			if !result {
 				return false
@@ -1095,27 +1095,27 @@ func processMetadata(s *Writer, available_in *uint, next_in *[]byte) bool {
 			continue
 		}
 
-		if s.stream_state_ == streamMetadataHead {
-			n := writeMetadataHeader(s, uint(s.remaining_metadata_bytes_), s.tiny_buf_.u8[:])
-			s.writeOutput(s.tiny_buf_.u8[:n])
-			s.stream_state_ = streamMetadataBody
+		if s.streamState == streamMetadataHead {
+			n := writeMetadataHeader(s, uint(s.remainingMetadataBytes), s.tinyBuf.u8[:])
+			s.writeOutput(s.tinyBuf.u8[:n])
+			s.streamState = streamMetadataBody
 			continue
 		} else {
 			/* Exit workflow only when there is no more input and no more output.
 			   Otherwise client may continue producing empty metadata blocks. */
-			if s.remaining_metadata_bytes_ == 0 {
-				s.remaining_metadata_bytes_ = math.MaxUint32
-				s.stream_state_ = streamProcessing
+			if s.remainingMetadataBytes == 0 {
+				s.remainingMetadataBytes = math.MaxUint32
+				s.streamState = streamProcessing
 				break
 			}
 
 			/* This guarantees progress in "TakeOutput" workflow. */
-			var c uint32 = brotli_min_uint32_t(s.remaining_metadata_bytes_, 16)
-			copy(s.tiny_buf_.u8[:], (*next_in)[:c])
-			*next_in = (*next_in)[c:]
-			*available_in -= uint(c)
-			s.remaining_metadata_bytes_ -= c
-			s.writeOutput(s.tiny_buf_.u8[:c])
+			var c uint32 = brotliMinUint32T(s.remainingMetadataBytes, 16)
+			copy(s.tinyBuf.u8[:], (*nextIn)[:c])
+			*nextIn = (*nextIn)[c:]
+			*availableIn -= uint(c)
+			s.remainingMetadataBytes -= c
+			s.writeOutput(s.tinyBuf.u8[:c])
 
 			continue
 		}
@@ -1124,10 +1124,10 @@ func processMetadata(s *Writer, available_in *uint, next_in *[]byte) bool {
 	return true
 }
 
-func updateSizeHint(s *Writer, available_in uint) {
-	if s.params.size_hint == 0 {
+func updateSizeHint(s *Writer, availableIn uint) {
+	if s.params.sizeHint == 0 {
 		var delta uint64 = unprocessedInputSize(s)
-		var tail uint64 = uint64(available_in)
+		var tail uint64 = uint64(availableIn)
 		var limit uint32 = 1 << 30
 		var total uint32
 		if (delta >= uint64(limit)) || (tail >= uint64(limit)) || ((delta + tail) >= uint64(limit)) {
@@ -1136,18 +1136,18 @@ func updateSizeHint(s *Writer, available_in uint) {
 			total = uint32(delta + tail)
 		}
 
-		s.params.size_hint = uint(total)
+		s.params.sizeHint = uint(total)
 	}
 }
 
-func encoderCompressStream(s *Writer, op int, available_in *uint, next_in *[]byte) bool {
+func encoderCompressStream(s *Writer, op int, availableIn *uint, nextIn *[]byte) bool {
 	if !ensureInitialized(s) {
 		return false
 	}
 
 	/* Unfinished metadata block; check requirements. */
-	if s.remaining_metadata_bytes_ != math.MaxUint32 {
-		if uint32(*available_in) != s.remaining_metadata_bytes_ {
+	if s.remainingMetadataBytes != math.MaxUint32 {
+		if uint32(*availableIn) != s.remainingMetadataBytes {
 			return false
 		}
 		if op != int(operationEmitMetadata) {
@@ -1157,54 +1157,54 @@ func encoderCompressStream(s *Writer, op int, available_in *uint, next_in *[]byt
 
 	if op == int(operationEmitMetadata) {
 		updateSizeHint(s, 0) /* First data metablock might be emitted here. */
-		return processMetadata(s, available_in, next_in)
+		return processMetadata(s, availableIn, nextIn)
 	}
 
-	if s.stream_state_ == streamMetadataHead || s.stream_state_ == streamMetadataBody {
+	if s.streamState == streamMetadataHead || s.streamState == streamMetadataBody {
 		return false
 	}
 
-	if s.stream_state_ != streamProcessing && *available_in != 0 {
+	if s.streamState != streamProcessing && *availableIn != 0 {
 		return false
 	}
 
 	if s.params.quality == fastOnePassCompressionQuality || s.params.quality == fastTwoPassCompressionQuality {
-		return encoderCompressStreamFast(s, op, available_in, next_in)
+		return encoderCompressStreamFast(s, op, availableIn, nextIn)
 	}
 
 	for {
-		var remaining_block_size uint = remainingInputBlockSize(s)
+		var remainingBlockSize uint = remainingInputBlockSize(s)
 
-		if remaining_block_size != 0 && *available_in != 0 {
-			var copy_input_size uint = brotli_min_size_t(remaining_block_size, *available_in)
-			copyInputToRingBuffer(s, copy_input_size, *next_in)
-			*next_in = (*next_in)[copy_input_size:]
-			*available_in -= copy_input_size
+		if remainingBlockSize != 0 && *availableIn != 0 {
+			var copyInputSize uint = brotliMinSizeT(remainingBlockSize, *availableIn)
+			copyInputToRingBuffer(s, copyInputSize, *nextIn)
+			*nextIn = (*nextIn)[copyInputSize:]
+			*availableIn -= copyInputSize
 			continue
 		}
 
-		if s.stream_state_ == streamFlushRequested && s.last_bytes_bits_ != 0 {
+		if s.streamState == streamFlushRequested && s.lastBytesBits != 0 {
 			injectBytePaddingBlock(s)
 			continue
 		}
 
 		/* Compress data only when stream is not
 		   finished and there is no pending flush request. */
-		if s.stream_state_ == streamProcessing {
-			if remaining_block_size == 0 || op != int(operationProcess) {
-				var is_last bool = ((*available_in == 0) && op == int(operationFinish))
-				var force_flush bool = ((*available_in == 0) && op == int(operationFlush))
+		if s.streamState == streamProcessing {
+			if remainingBlockSize == 0 || op != int(operationProcess) {
+				var isLast bool = (*availableIn == 0) && op == int(operationFinish)
+				var forceFlush bool = (*availableIn == 0) && op == int(operationFlush)
 				var result bool
-				updateSizeHint(s, *available_in)
-				result = encodeData(s, is_last, force_flush)
+				updateSizeHint(s, *availableIn)
+				result = encodeData(s, isLast, forceFlush)
 				if !result {
 					return false
 				}
-				if force_flush {
-					s.stream_state_ = streamFlushRequested
+				if forceFlush {
+					s.streamState = streamFlushRequested
 				}
-				if is_last {
-					s.stream_state_ = streamFinished
+				if isLast {
+					s.streamState = streamFinished
 				}
 				continue
 			}

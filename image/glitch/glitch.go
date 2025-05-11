@@ -17,6 +17,8 @@ import (
 	"sort"
 	"sync"
 	"time"
+
+	"github.com/inovacc/toolkit/compression"
 )
 
 const (

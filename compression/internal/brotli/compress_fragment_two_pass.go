@@ -253,7 +253,7 @@ func createCommands(input []byte, block_size uint, input_size uint, base_ip_ptr 
 	   previous copy. Bytes between "next_emit" and the start of the next copy or
 	   the end of the input will be emitted as literal bytes. */
 	if block_size >= kInputMarginBytes {
-		var len_limit uint = brotli_min_size_t(block_size-min_match, input_size-kInputMarginBytes)
+		var len_limit uint = brotliMinSizeT(block_size-min_match, input_size-kInputMarginBytes)
 		var ip_limit int = int(len_limit)
 		/* For the last block, we need to keep a 16 bytes margin so that we can be
 		   sure that all distances are at most window size - 16.
@@ -318,7 +318,7 @@ func createCommands(input []byte, block_size uint, input_size uint, base_ip_ptr 
 
 			/* Check copy distance. If candidate is not feasible, continue search.
 			   Checking is done outside of hot loop to reduce overhead. */
-			if ip-candidate > maxDistance_compress_fragment {
+			if ip-candidate > maxdistanceCompressFragment {
 				goto trawl
 			}
 
@@ -391,7 +391,7 @@ func createCommands(input []byte, block_size uint, input_size uint, base_ip_ptr 
 				}
 			}
 
-			for ip-candidate <= maxDistance_compress_fragment && isMatch1(input[ip:], base_ip_ptr[candidate-base_ip:], min_match) {
+			for ip-candidate <= maxdistanceCompressFragment && isMatch1(input[ip:], base_ip_ptr[candidate-base_ip:], min_match) {
 				var base int = ip
 				/* We have a 6-byte match at ip, and no need to emit any
 				   literal bytes prior to ip. */
@@ -706,7 +706,7 @@ func compressFragmentTwoPassImpl(input []byte, input_size uint, is_last bool, co
 	var base_ip []byte = input
 
 	for input_size > 0 {
-		var block_size uint = brotli_min_size_t(input_size, kCompressFragmentTwoPassBlockSize)
+		var block_size uint = brotliMinSizeT(input_size, kCompressFragmentTwoPassBlockSize)
 		var commands []uint32 = command_buf
 		var literals []byte = literal_buf
 		var num_literals uint

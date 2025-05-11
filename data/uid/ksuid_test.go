@@ -41,14 +41,14 @@ func TestNil(t *testing.T) {
 		t.Fatal("Nil should be Nil!")
 	}
 
-	x, _ := FromBytes(make([]byte, byteLength))
+	x, _ := FromKSUIDBytes(make([]byte, byteLength))
 	if !x.IsNil() {
 		t.Fatal("Zero-byte array should be Nil!")
 	}
 }
 
 func TestEncoding(t *testing.T) {
-	x, _ := FromBytes(make([]byte, byteLength))
+	x, _ := FromKSUIDBytes(make([]byte, byteLength))
 	if !x.IsNil() {
 		t.Fatal("Zero-byte array should be Nil!")
 	}
@@ -67,7 +67,7 @@ func TestPadding(t *testing.T) {
 		b[i] = 255
 	}
 
-	x, _ := FromBytes(b)
+	x, _ := FromKSUIDBytes(b)
 	xEncoded := x.String()
 	nilEncoded := NilKSUID.String()
 
@@ -77,12 +77,12 @@ func TestPadding(t *testing.T) {
 }
 
 func TestParse(t *testing.T) {
-	_, err := Parse("123")
+	_, err := ParseKSUID("123")
 	if !errors.Is(err, errStrSize) {
 		t.Fatal("Expected Parsing a 3-char string to return an error")
 	}
 
-	parsed, err := Parse(strings.Repeat("0", stringEncodedLength))
+	parsed, err := ParseKSUID(strings.Repeat("0", stringEncodedLength))
 	if err != nil {
 		t.Fatal("Unexpected error", err)
 	}
@@ -97,12 +97,12 @@ func TestParse(t *testing.T) {
 	for i := 0; i < byteLength; i++ {
 		maxBytes[i] = 255
 	}
-	maxBytesKSUID, err := FromBytes(maxBytes)
+	maxBytesKSUID, err := FromKSUIDBytes(maxBytes)
 	if err != nil {
 		t.Fatal("Unexpected error", err)
 	}
 
-	maxParseKSUID, err := Parse(maxStringEncoded)
+	maxParseKSUID, err := ParseKSUID(maxStringEncoded)
 	if err != nil {
 		t.Fatal("Unexpected error", err)
 	}
@@ -118,7 +118,7 @@ func TestIssue25(t *testing.T) {
 		"aaaaaaaaaaaaaaaaaaaaaaaaaaa",
 		"aWgEPTl1tmebfsQzFP4bxwgy80!",
 	} {
-		_, err := Parse(s)
+		_, err := ParseKSUID(s)
 		if !errors.Is(err, errStrValue) {
 			t.Error("invalid KSUID representations cannot be successfully parsed, got err =", err)
 		}
@@ -127,7 +127,7 @@ func TestIssue25(t *testing.T) {
 
 func TestEncodeAndDecode(t *testing.T) {
 	x := NewKSUID()
-	builtFromEncodedString, err := Parse(x.String())
+	builtFromEncodedString, err := ParseKSUID(x.String())
 	if err != nil {
 		t.Fatal("Unexpected error", err)
 	}
@@ -205,7 +205,7 @@ func TestFlag(t *testing.T) {
 }
 
 func TestSqlValuer(t *testing.T) {
-	id, _ := Parse(maxStringEncoded)
+	id, _ := ParseKSUID(maxStringEncoded)
 
 	if v, err := id.Value(); err != nil {
 		t.Error(err)
@@ -256,7 +256,7 @@ func TestSqlScanner(t *testing.T) {
 
 func TestAppend(t *testing.T) {
 	for _, repr := range []string{"0pN1Own7255s7jwpwy495bAZeEa", "aWgEPTl1tmebfsQzFP4bxwgy80V"} {
-		k, _ := Parse(repr)
+		k, _ := ParseKSUID(repr)
 		a := make([]byte, 0, stringEncodedLength)
 
 		a = append(a, "?: "...)
@@ -361,7 +361,7 @@ func BenchmarkString(b *testing.B) {
 
 func BenchmarkParseKSUID(b *testing.B) {
 	for i := 0; i != b.N; i++ {
-		_, _ = Parse(maxStringEncoded)
+		_, _ = ParseKSUID(maxStringEncoded)
 	}
 }
 

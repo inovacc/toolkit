@@ -10,13 +10,15 @@ import (
 	"github.com/inovacc/toolkit/data/algorithm/hashing"
 )
 
+const testDataDir = "../testdata"
+
 func TestGlitchEncodeDecode(t *testing.T) {
 	g := NewGlitch()
 
 	// Setup test directories and files
-	testInput := "/home/dyam/Downloads/gocv-0.41.0.zip"
-	testOutputDir := "testdata/frames"
-	testReconstructed := "testdata/reconstructed/gocv-0.41.0.zip"
+	testInput := filepath.Join(testDataDir, "lena_original.jpg")
+	testOutputDir := filepath.Join(testDataDir, "frames")
+	testReconstructed := filepath.Join(testDataDir, "reconstructed/lena_original.jpg")
 
 	// defer os.RemoveAll(testOutputDir)
 	// defer os.RemoveAll(testReconstructed)
@@ -57,9 +59,9 @@ func TestGlitchEncodeDecode(t *testing.T) {
 		t.Fatalf("MakeVideo failed: %v", err)
 	}
 
-	videoPath := "testdata/output.mkv"
-	tempFramesDir := "testdata/temp_frames"
-	outputDir := "testdata/decoded"
+	videoPath := filepath.Join(testDataDir, "output.mkv")
+	tempFramesDir := filepath.Join(testDataDir, "temp_frames")
+	outputDir := filepath.Join(testDataDir, "decoded")
 
 	meta, err = g.ExtractFileFromVideo(videoPath, tempFramesDir, outputDir)
 	if err != nil {

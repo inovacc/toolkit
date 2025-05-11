@@ -16,7 +16,7 @@ import "encoding/binary"
    Adapted from the CompressFragment() function in
    https://github.com/google/snappy/blob/master/snappy.cc */
 
-const maxDistance_compress_fragment = 262128
+const maxdistanceCompressFragment = 262128
 
 func hash5(p []byte, shift uint) uint32 {
 	var h uint64 = (binary.LittleEndian.Uint64(p) << 24) * uint64(kHashMul32)
@@ -48,54 +48,54 @@ Builds a literal prefix code into "depths" and "bits" based on the statistics
 	Returns estimated compression ratio millibytes/char for encoding given input
 	with generated code.
 */
-func buildAndStoreLiteralPrefixCode(input []byte, input_size uint, depths []byte, bits []uint16, storage_ix *uint, storage []byte) uint {
+func buildAndStoreLiteralPrefixCode(input []byte, inputSize uint, depths []byte, bits []uint16, storageIx *uint, storage []byte) uint {
 	var histogram = [256]uint32{0}
-	var histogram_total uint
+	var histogramTotal uint
 	var i uint
-	if input_size < 1<<15 {
-		for i = 0; i < input_size; i++ {
+	if inputSize < 1<<15 {
+		for i = 0; i < inputSize; i++ {
 			histogram[input[i]]++
 		}
 
-		histogram_total = input_size
+		histogramTotal = inputSize
 		for i = 0; i < 256; i++ {
 			/* We weigh the first 11 samples with weight 3 to account for the
 			   balancing effect of the LZ77 phase on the histogram. */
-			var adjust uint32 = 2 * brotli_min_uint32_t(histogram[i], 11)
+			var adjust uint32 = 2 * brotliMinUint32T(histogram[i], 11)
 			histogram[i] += adjust
-			histogram_total += uint(adjust)
+			histogramTotal += uint(adjust)
 		}
 	} else {
 		const kSampleRate uint = 29
-		for i = 0; i < input_size; i += kSampleRate {
+		for i = 0; i < inputSize; i += kSampleRate {
 			histogram[input[i]]++
 		}
 
-		histogram_total = (input_size + kSampleRate - 1) / kSampleRate
+		histogramTotal = (inputSize + kSampleRate - 1) / kSampleRate
 		for i = 0; i < 256; i++ {
 			/* We add 1 to each population count to avoid 0 bit depths (since this is
 			   only a sample and we don't know if the symbol appears or not), and we
 			   weigh the first 11 samples with weight 3 to account for the balancing
 			   effect of the LZ77 phase on the histogram (more frequent symbols are
 			   more likely to be in backward references instead as literals). */
-			var adjust uint32 = 1 + 2*brotli_min_uint32_t(histogram[i], 11)
+			var adjust uint32 = 1 + 2*brotliMinUint32T(histogram[i], 11)
 			histogram[i] += adjust
-			histogram_total += uint(adjust)
+			histogramTotal += uint(adjust)
 		}
 	}
 
-	buildAndStoreHuffmanTreeFast(histogram[:], histogram_total, /* max_bits = */
-		8, depths, bits, storage_ix, storage)
+	buildAndStoreHuffmanTreeFast(histogram[:], histogramTotal, /* max_bits = */
+		8, depths, bits, storageIx, storage)
 	{
-		var literal_ratio uint = 0
+		var literalRatio uint = 0
 		for i = 0; i < 256; i++ {
 			if histogram[i] != 0 {
-				literal_ratio += uint(histogram[i] * uint32(depths[i]))
+				literalRatio += uint(histogram[i] * uint32(depths[i]))
 			}
 		}
 
 		/* Estimated encoding ratio, millibytes per symbol. */
-		return (literal_ratio * 125) / histogram_total
+		return (literalRatio * 125) / histogramTotal
 	}
 }
 
@@ -104,12 +104,12 @@ Builds a command and distance prefix code (each 64 symbols) into "depth" and
 
 	"bits" based on "histogram" and stores it into the bit stream.
 */
-func buildAndStoreCommandPrefixCode1(histogram []uint32, depth []byte, bits []uint16, storage_ix *uint, storage []byte) {
+func buildAndStoreCommandPrefixCode1(histogram []uint32, depth []byte, bits []uint16, storageIx *uint, storage []byte) {
 	var tree [129]huffmanTree
-	var cmd_depth = [numCommandSymbols]byte{0}
+	var cmdDepth = [numCommandSymbols]byte{0}
 	/* Tree size for building a tree over 64 symbols is 2 * 64 + 1. */
 
-	var cmd_bits [64]uint16
+	var cmdBits [64]uint16
 
 	createHuffmanTree(histogram, 64, 15, tree[:], depth)
 	createHuffmanTree(histogram[64:], 64, 14, tree[:], depth[64:])
@@ -119,68 +119,68 @@ func buildAndStoreCommandPrefixCode1(histogram []uint32, depth []byte, bits []ui
 	   the full alphabet. This looks complicated, but having the symbols
 	   in this order in the command bits saves a few branches in the Emit*
 	   functions. */
-	copy(cmd_depth[:], depth[:24])
+	copy(cmdDepth[:], depth[:24])
 
-	copy(cmd_depth[24:][:], depth[40:][:8])
-	copy(cmd_depth[32:][:], depth[24:][:8])
-	copy(cmd_depth[40:][:], depth[48:][:8])
-	copy(cmd_depth[48:][:], depth[32:][:8])
-	copy(cmd_depth[56:][:], depth[56:][:8])
-	convertBitDepthsToSymbols(cmd_depth[:], 64, cmd_bits[:])
-	copy(bits, cmd_bits[:24])
-	copy(bits[24:], cmd_bits[32:][:8])
-	copy(bits[32:], cmd_bits[48:][:8])
-	copy(bits[40:], cmd_bits[24:][:8])
-	copy(bits[48:], cmd_bits[40:][:8])
-	copy(bits[56:], cmd_bits[56:][:8])
+	copy(cmdDepth[24:][:], depth[40:][:8])
+	copy(cmdDepth[32:][:], depth[24:][:8])
+	copy(cmdDepth[40:][:], depth[48:][:8])
+	copy(cmdDepth[48:][:], depth[32:][:8])
+	copy(cmdDepth[56:][:], depth[56:][:8])
+	convertBitDepthsToSymbols(cmdDepth[:], 64, cmdBits[:])
+	copy(bits, cmdBits[:24])
+	copy(bits[24:], cmdBits[32:][:8])
+	copy(bits[32:], cmdBits[48:][:8])
+	copy(bits[40:], cmdBits[24:][:8])
+	copy(bits[48:], cmdBits[40:][:8])
+	copy(bits[56:], cmdBits[56:][:8])
 	convertBitDepthsToSymbols(depth[64:], 64, bits[64:])
 	{
 		/* Create the bit length array for the full command alphabet. */
 		var i uint
 		for i := 0; i < int(64); i++ {
-			cmd_depth[i] = 0
+			cmdDepth[i] = 0
 		} /* only 64 first values were used */
-		copy(cmd_depth[:], depth[:8])
-		copy(cmd_depth[64:][:], depth[8:][:8])
-		copy(cmd_depth[128:][:], depth[16:][:8])
-		copy(cmd_depth[192:][:], depth[24:][:8])
-		copy(cmd_depth[384:][:], depth[32:][:8])
+		copy(cmdDepth[:], depth[:8])
+		copy(cmdDepth[64:][:], depth[8:][:8])
+		copy(cmdDepth[128:][:], depth[16:][:8])
+		copy(cmdDepth[192:][:], depth[24:][:8])
+		copy(cmdDepth[384:][:], depth[32:][:8])
 		for i = 0; i < 8; i++ {
-			cmd_depth[128+8*i] = depth[40+i]
-			cmd_depth[256+8*i] = depth[48+i]
-			cmd_depth[448+8*i] = depth[56+i]
+			cmdDepth[128+8*i] = depth[40+i]
+			cmdDepth[256+8*i] = depth[48+i]
+			cmdDepth[448+8*i] = depth[56+i]
 		}
 
-		storeHuffmanTree(cmd_depth[:], numCommandSymbols, tree[:], storage_ix, storage)
+		storeHuffmanTree(cmdDepth[:], numCommandSymbols, tree[:], storageIx, storage)
 	}
 
-	storeHuffmanTree(depth[64:], 64, tree[:], storage_ix, storage)
+	storeHuffmanTree(depth[64:], 64, tree[:], storageIx, storage)
 }
 
 /* REQUIRES: insertlen < 6210 */
-func emitInsertLen1(insertlen uint, depth []byte, bits []uint16, histo []uint32, storage_ix *uint, storage []byte) {
+func emitInsertLen1(insertlen uint, depth []byte, bits []uint16, histo []uint32, storageIx *uint, storage []byte) {
 	if insertlen < 6 {
 		var code uint = insertlen + 40
-		writeBits(uint(depth[code]), uint64(bits[code]), storage_ix, storage)
+		writeBits(uint(depth[code]), uint64(bits[code]), storageIx, storage)
 		histo[code]++
 	} else if insertlen < 130 {
 		var tail uint = insertlen - 2
 		var nbits uint32 = log2FloorNonZero(tail) - 1
 		var prefix uint = tail >> nbits
 		var inscode uint = uint((nbits << 1) + uint32(prefix) + 42)
-		writeBits(uint(depth[inscode]), uint64(bits[inscode]), storage_ix, storage)
-		writeBits(uint(nbits), uint64(tail)-(uint64(prefix)<<nbits), storage_ix, storage)
+		writeBits(uint(depth[inscode]), uint64(bits[inscode]), storageIx, storage)
+		writeBits(uint(nbits), uint64(tail)-(uint64(prefix)<<nbits), storageIx, storage)
 		histo[inscode]++
 	} else if insertlen < 2114 {
 		var tail uint = insertlen - 66
 		var nbits uint32 = log2FloorNonZero(tail)
 		var code uint = uint(nbits + 50)
-		writeBits(uint(depth[code]), uint64(bits[code]), storage_ix, storage)
-		writeBits(uint(nbits), uint64(tail)-(uint64(uint(1))<<nbits), storage_ix, storage)
+		writeBits(uint(depth[code]), uint64(bits[code]), storageIx, storage)
+		writeBits(uint(nbits), uint64(tail)-(uint64(uint(1))<<nbits), storageIx, storage)
 		histo[code]++
 	} else {
-		writeBits(uint(depth[61]), uint64(bits[61]), storage_ix, storage)
-		writeBits(12, uint64(insertlen)-2114, storage_ix, storage)
+		writeBits(uint(depth[61]), uint64(bits[61]), storageIx, storage)
+		writeBits(12, uint64(insertlen)-2114, storageIx, storage)
 		histo[61]++
 	}
 }
@@ -223,69 +223,69 @@ func emitCopyLen1(copylen uint, depth []byte, bits []uint16, histo []uint32, sto
 	}
 }
 
-func emitCopyLenLastDistance1(copylen uint, depth []byte, bits []uint16, histo []uint32, storage_ix *uint, storage []byte) {
+func emitCopyLenLastDistance1(copylen uint, depth []byte, bits []uint16, histo []uint32, storageIx *uint, storage []byte) {
 	if copylen < 12 {
-		writeBits(uint(depth[copylen-4]), uint64(bits[copylen-4]), storage_ix, storage)
+		writeBits(uint(depth[copylen-4]), uint64(bits[copylen-4]), storageIx, storage)
 		histo[copylen-4]++
 	} else if copylen < 72 {
 		var tail uint = copylen - 8
 		var nbits uint32 = log2FloorNonZero(tail) - 1
 		var prefix uint = tail >> nbits
 		var code uint = uint((nbits << 1) + uint32(prefix) + 4)
-		writeBits(uint(depth[code]), uint64(bits[code]), storage_ix, storage)
-		writeBits(uint(nbits), uint64(tail)-(uint64(prefix)<<nbits), storage_ix, storage)
+		writeBits(uint(depth[code]), uint64(bits[code]), storageIx, storage)
+		writeBits(uint(nbits), uint64(tail)-(uint64(prefix)<<nbits), storageIx, storage)
 		histo[code]++
 	} else if copylen < 136 {
 		var tail uint = copylen - 8
 		var code uint = (tail >> 5) + 30
-		writeBits(uint(depth[code]), uint64(bits[code]), storage_ix, storage)
-		writeBits(5, uint64(tail)&31, storage_ix, storage)
-		writeBits(uint(depth[64]), uint64(bits[64]), storage_ix, storage)
+		writeBits(uint(depth[code]), uint64(bits[code]), storageIx, storage)
+		writeBits(5, uint64(tail)&31, storageIx, storage)
+		writeBits(uint(depth[64]), uint64(bits[64]), storageIx, storage)
 		histo[code]++
 		histo[64]++
 	} else if copylen < 2120 {
 		var tail uint = copylen - 72
 		var nbits uint32 = log2FloorNonZero(tail)
 		var code uint = uint(nbits + 28)
-		writeBits(uint(depth[code]), uint64(bits[code]), storage_ix, storage)
-		writeBits(uint(nbits), uint64(tail)-(uint64(uint(1))<<nbits), storage_ix, storage)
-		writeBits(uint(depth[64]), uint64(bits[64]), storage_ix, storage)
+		writeBits(uint(depth[code]), uint64(bits[code]), storageIx, storage)
+		writeBits(uint(nbits), uint64(tail)-(uint64(uint(1))<<nbits), storageIx, storage)
+		writeBits(uint(depth[64]), uint64(bits[64]), storageIx, storage)
 		histo[code]++
 		histo[64]++
 	} else {
-		writeBits(uint(depth[39]), uint64(bits[39]), storage_ix, storage)
-		writeBits(24, uint64(copylen)-2120, storage_ix, storage)
-		writeBits(uint(depth[64]), uint64(bits[64]), storage_ix, storage)
+		writeBits(uint(depth[39]), uint64(bits[39]), storageIx, storage)
+		writeBits(24, uint64(copylen)-2120, storageIx, storage)
+		writeBits(uint(depth[64]), uint64(bits[64]), storageIx, storage)
 		histo[39]++
 		histo[64]++
 	}
 }
 
-func emitDistance1(distance uint, depth []byte, bits []uint16, histo []uint32, storage_ix *uint, storage []byte) {
+func emitDistance1(distance uint, depth []byte, bits []uint16, histo []uint32, storageIx *uint, storage []byte) {
 	var d uint = distance + 3
 	var nbits uint32 = log2FloorNonZero(d) - 1
 	var prefix uint = (d >> nbits) & 1
 	var offset uint = (2 + prefix) << nbits
 	var distcode uint = uint(2*(nbits-1) + uint32(prefix) + 80)
-	writeBits(uint(depth[distcode]), uint64(bits[distcode]), storage_ix, storage)
-	writeBits(uint(nbits), uint64(d)-uint64(offset), storage_ix, storage)
+	writeBits(uint(depth[distcode]), uint64(bits[distcode]), storageIx, storage)
+	writeBits(uint(nbits), uint64(d)-uint64(offset), storageIx, storage)
 	histo[distcode]++
 }
 
-func emitLiterals(input []byte, len uint, depth []byte, bits []uint16, storage_ix *uint, storage []byte) {
+func emitLiterals(input []byte, len uint, depth []byte, bits []uint16, storageIx *uint, storage []byte) {
 	var j uint
 	for j = 0; j < len; j++ {
 		var lit byte = input[j]
-		writeBits(uint(depth[lit]), uint64(bits[lit]), storage_ix, storage)
+		writeBits(uint(depth[lit]), uint64(bits[lit]), storageIx, storage)
 	}
 }
 
 /* REQUIRES: len <= 1 << 24. */
-func storeMetaBlockHeader1(len uint, is_uncompressed bool, storage_ix *uint, storage []byte) {
+func storeMetaBlockHeader1(len uint, isUncompressed bool, storageIx *uint, storage []byte) {
 	var nibbles uint = 6
 
 	/* ISLAST */
-	writeBits(1, 0, storage_ix, storage)
+	writeBits(1, 0, storageIx, storage)
 
 	if len <= 1<<16 {
 		nibbles = 4
@@ -293,46 +293,46 @@ func storeMetaBlockHeader1(len uint, is_uncompressed bool, storage_ix *uint, sto
 		nibbles = 5
 	}
 
-	writeBits(2, uint64(nibbles)-4, storage_ix, storage)
-	writeBits(nibbles*4, uint64(len)-1, storage_ix, storage)
+	writeBits(2, uint64(nibbles)-4, storageIx, storage)
+	writeBits(nibbles*4, uint64(len)-1, storageIx, storage)
 
 	/* ISUNCOMPRESSED */
-	writeSingleBit(is_uncompressed, storage_ix, storage)
+	writeSingleBit(isUncompressed, storageIx, storage)
 }
 
 func updateBits(n_bits uint, bits uint32, pos uint, array []byte) {
 	for n_bits > 0 {
-		var byte_pos uint = pos >> 3
-		var n_unchanged_bits uint = pos & 7
-		var n_changed_bits uint = brotli_min_size_t(n_bits, 8-n_unchanged_bits)
-		var total_bits uint = n_unchanged_bits + n_changed_bits
-		var mask uint32 = (^((1 << total_bits) - 1)) | ((1 << n_unchanged_bits) - 1)
-		var unchanged_bits uint32 = uint32(array[byte_pos]) & mask
-		var changed_bits uint32 = bits & ((1 << n_changed_bits) - 1)
-		array[byte_pos] = byte(changed_bits<<n_unchanged_bits | unchanged_bits)
-		n_bits -= n_changed_bits
-		bits >>= n_changed_bits
-		pos += n_changed_bits
+		var bytePos uint = pos >> 3
+		var nUnchangedBits uint = pos & 7
+		var nChangedBits uint = brotliMinSizeT(n_bits, 8-nUnchangedBits)
+		var totalBits uint = nUnchangedBits + nChangedBits
+		var mask uint32 = (^((1 << totalBits) - 1)) | ((1 << nUnchangedBits) - 1)
+		var unchangedBits uint32 = uint32(array[bytePos]) & mask
+		var changedBits uint32 = bits & ((1 << nChangedBits) - 1)
+		array[bytePos] = byte(changedBits<<nUnchangedBits | unchangedBits)
+		n_bits -= nChangedBits
+		bits >>= nChangedBits
+		pos += nChangedBits
 	}
 }
 
-func rewindBitPosition1(new_storage_ix uint, storage_ix *uint, storage []byte) {
-	var bitpos uint = new_storage_ix & 7
+func rewindBitPosition1(newStorageIx uint, storageIx *uint, storage []byte) {
+	var bitpos uint = newStorageIx & 7
 	var mask uint = (1 << bitpos) - 1
-	storage[new_storage_ix>>3] &= byte(mask)
-	*storage_ix = new_storage_ix
+	storage[newStorageIx>>3] &= byte(mask)
+	*storageIx = newStorageIx
 }
 
-var shouldMergeBlock_kSampleRate uint = 43
+var shouldmergeblockKsamplerate uint = 43
 
 func shouldMergeBlock(data []byte, len uint, depths []byte) bool {
 	var histo = [256]uint{0}
 	var i uint
-	for i = 0; i < len; i += shouldMergeBlock_kSampleRate {
+	for i = 0; i < len; i += shouldmergeblockKsamplerate {
 		histo[data[i]]++
 	}
 	{
-		var total uint = (len + shouldMergeBlock_kSampleRate - 1) / shouldMergeBlock_kSampleRate
+		var total uint = (len + shouldmergeblockKsamplerate - 1) / shouldmergeblockKsamplerate
 		var r float64 = (fastLog2(total)+0.5)*float64(total) + 200
 		for i = 0; i < 256; i++ {
 			r -= float64(histo[i]) * (float64(depths[i]) + fastLog2(histo[i]))
@@ -342,23 +342,23 @@ func shouldMergeBlock(data []byte, len uint, depths []byte) bool {
 	}
 }
 
-func shouldUseUncompressedMode(metablock_start []byte, next_emit []byte, insertlen uint, literal_ratio uint) bool {
-	var compressed uint = uint(-cap(next_emit) + cap(metablock_start))
+func shouldUseUncompressedMode(metablockStart []byte, nextEmit []byte, insertlen uint, literalRatio uint) bool {
+	var compressed uint = uint(-cap(nextEmit) + cap(metablockStart))
 	if compressed*50 > insertlen {
 		return false
 	} else {
-		return literal_ratio > 980
+		return literalRatio > 980
 	}
 }
 
-func emitUncompressedMetaBlock1(begin []byte, end []byte, storage_ix_start uint, storage_ix *uint, storage []byte) {
+func emitUncompressedMetaBlock1(begin []byte, end []byte, storageIxStart uint, storageIx *uint, storage []byte) {
 	var len uint = uint(-cap(end) + cap(begin))
-	rewindBitPosition1(storage_ix_start, storage_ix, storage)
-	storeMetaBlockHeader1(uint(len), true, storage_ix, storage)
-	*storage_ix = (*storage_ix + 7) &^ 7
-	copy(storage[*storage_ix>>3:], begin[:len])
-	*storage_ix += uint(len << 3)
-	storage[*storage_ix>>3] = 0
+	rewindBitPosition1(storageIxStart, storageIx, storage)
+	storeMetaBlockHeader1(uint(len), true, storageIx, storage)
+	*storageIx = (*storageIx + 7) &^ 7
+	copy(storage[*storageIx>>3:], begin[:len])
+	*storageIx += uint(len << 3)
+	storage[*storageIx>>3] = 0
 }
 
 var kCmdHistoSeed = [128]uint32{
@@ -492,27 +492,27 @@ var kCmdHistoSeed = [128]uint32{
 	0,
 }
 
-var compressFragmentFastImpl_kFirstBlockSize uint = 3 << 15
-var compressFragmentFastImpl_kMergeBlockSize uint = 1 << 16
+var compressfragmentfastimplKfirstblocksize uint = 3 << 15
+var compressfragmentfastimplKmergeblocksize uint = 1 << 16
 
-func compressFragmentFastImpl(in []byte, input_size uint, is_last bool, table []int, table_bits uint, cmd_depth []byte, cmd_bits []uint16, cmd_code_numbits *uint, cmd_code []byte, storage_ix *uint, storage []byte) {
-	var cmd_histo [128]uint32
-	var ip_end int
-	var next_emit int = 0
-	var base_ip int = 0
+func compressFragmentFastImpl(in []byte, inputSize uint, isLast bool, table []int, tableBits uint, cmdDepth []byte, cmdBits []uint16, cmdCodeNumbits *uint, cmdCode []byte, storageIx *uint, storage []byte) {
+	var cmdHisto [128]uint32
+	var ipEnd int
+	var nextEmit int = 0
+	var baseIp int = 0
 	var input int = 0
 	const kInputMarginBytes uint = windowGap
 	const kMinMatchLen uint = 5
-	var metablock_start int = input
-	var block_size uint = brotli_min_size_t(input_size, compressFragmentFastImpl_kFirstBlockSize)
-	var total_block_size uint = block_size
-	var mlen_storage_ix uint = *storage_ix + 3
-	var lit_depth [256]byte
-	var lit_bits [256]uint16
-	var literal_ratio uint
+	var metablockStart int = input
+	var blockSize uint = brotliMinSizeT(inputSize, compressfragmentfastimplKfirstblocksize)
+	var totalBlockSize uint = blockSize
+	var mlenStorageIx uint = *storageIx + 3
+	var litDepth [256]byte
+	var litBits [256]uint16
+	var literalRatio uint
 	var ip int
-	var last_distance int
-	var shift uint = 64 - table_bits
+	var lastDistance int
+	var shift uint = 64 - tableBits
 
 	/* "next_emit" is a pointer to the first byte that is not covered by a
 	   previous copy. Bytes between "next_emit" and the start of the next copy or
@@ -523,48 +523,48 @@ func compressFragmentFastImpl(in []byte, input_size uint, is_last bool, table []
 
 	/* Save the bit position of the MLEN field of the meta-block header, so that
 	   we can update it later if we decide to extend this meta-block. */
-	storeMetaBlockHeader1(block_size, false, storage_ix, storage)
+	storeMetaBlockHeader1(blockSize, false, storageIx, storage)
 
 	/* No block splits, no contexts. */
-	writeBits(13, 0, storage_ix, storage)
+	writeBits(13, 0, storageIx, storage)
 
-	literal_ratio = buildAndStoreLiteralPrefixCode(in[input:], block_size, lit_depth[:], lit_bits[:], storage_ix, storage)
+	literalRatio = buildAndStoreLiteralPrefixCode(in[input:], blockSize, litDepth[:], litBits[:], storageIx, storage)
 	{
 		/* Store the pre-compressed command and distance prefix codes. */
 		var i uint
-		for i = 0; i+7 < *cmd_code_numbits; i += 8 {
-			writeBits(8, uint64(cmd_code[i>>3]), storage_ix, storage)
+		for i = 0; i+7 < *cmdCodeNumbits; i += 8 {
+			writeBits(8, uint64(cmdCode[i>>3]), storageIx, storage)
 		}
 	}
 
-	writeBits(*cmd_code_numbits&7, uint64(cmd_code[*cmd_code_numbits>>3]), storage_ix, storage)
+	writeBits(*cmdCodeNumbits&7, uint64(cmdCode[*cmdCodeNumbits>>3]), storageIx, storage)
 
 	/* Initialize the command and distance histograms. We will gather
 	   statistics of command and distance codes during the processing
 	   of this block and use it to update the command and distance
 	   prefix codes for the next block. */
-emit_commands:
-	copy(cmd_histo[:], kCmdHistoSeed[:])
+emitCommands:
+	copy(cmdHisto[:], kCmdHistoSeed[:])
 
 	/* "ip" is the input pointer. */
 	ip = input
 
-	last_distance = -1
-	ip_end = int(uint(input) + block_size)
+	lastDistance = -1
+	ipEnd = int(uint(input) + blockSize)
 
-	if block_size >= kInputMarginBytes {
-		var len_limit uint = brotli_min_size_t(block_size-kMinMatchLen, input_size-kInputMarginBytes)
-		var ip_limit int = int(uint(input) + len_limit)
+	if blockSize >= kInputMarginBytes {
+		var lenLimit uint = brotliMinSizeT(blockSize-kMinMatchLen, inputSize-kInputMarginBytes)
+		var ipLimit int = int(uint(input) + lenLimit)
 		/* For the last block, we need to keep a 16 bytes margin so that we can be
 		   sure that all distances are at most window size - 16.
 		   For all other blocks, we only need to keep a margin of 5 bytes so that
 		   we don't go over the block size with a copy. */
 
-		var next_hash uint32
+		var nextHash uint32
 		ip++
-		for next_hash = hash5(in[ip:], shift); ; {
+		for nextHash = hash5(in[ip:], shift); ; {
 			var skip uint32 = 32
-			var next_ip int = ip
+			var nextIp int = ip
 			/* Step 1: Scan forward in the input looking for a 5-byte-long match.
 			   If we get close to exhausting the input then goto emit_remainder.
 
@@ -582,34 +582,34 @@ emit_commands:
 			   number of bytes to move ahead for each iteration. */
 
 			var candidate int
-			assert(next_emit < ip)
+			assert(nextEmit < ip)
 
 		trawl:
 			for {
-				var hash uint32 = next_hash
-				var bytes_between_hash_lookups uint32 = skip >> 5
+				var hash uint32 = nextHash
+				var bytesBetweenHashLookups uint32 = skip >> 5
 				skip++
-				assert(hash == hash5(in[next_ip:], shift))
-				ip = next_ip
-				next_ip = int(uint32(ip) + bytes_between_hash_lookups)
-				if next_ip > ip_limit {
-					goto emit_remainder
+				assert(hash == hash5(in[nextIp:], shift))
+				ip = nextIp
+				nextIp = int(uint32(ip) + bytesBetweenHashLookups)
+				if nextIp > ipLimit {
+					goto emitRemainder
 				}
 
-				next_hash = hash5(in[next_ip:], shift)
-				candidate = ip - last_distance
+				nextHash = hash5(in[nextIp:], shift)
+				candidate = ip - lastDistance
 				if isMatch5(in[ip:], in[candidate:]) {
 					if candidate < ip {
-						table[hash] = int(ip - base_ip)
+						table[hash] = int(ip - baseIp)
 						break
 					}
 				}
 
-				candidate = base_ip + table[hash]
-				assert(candidate >= base_ip)
+				candidate = baseIp + table[hash]
+				assert(candidate >= baseIp)
 				assert(candidate < ip)
 
-				table[hash] = int(ip - base_ip)
+				table[hash] = int(ip - baseIp)
 				if isMatch5(in[ip:], in[candidate:]) {
 					break
 				}
@@ -617,7 +617,7 @@ emit_commands:
 
 			/* Check copy distance. If candidate is not feasible, continue search.
 			   Checking is done outside of hot loop to reduce overhead. */
-			if ip-candidate > maxDistance_compress_fragment {
+			if ip-candidate > maxdistanceCompressFragment {
 				goto trawl
 			}
 
@@ -628,56 +628,56 @@ emit_commands:
 			{
 				var base int = ip
 				/* > 0 */
-				var matched uint = 5 + findMatchLengthWithLimit(in[candidate+5:], in[ip+5:], uint(ip_end-ip)-5)
+				var matched uint = 5 + findMatchLengthWithLimit(in[candidate+5:], in[ip+5:], uint(ipEnd-ip)-5)
 				var distance int = int(base - candidate)
 				/* We have a 5-byte match at ip, and we need to emit bytes in
 				   [next_emit, ip). */
 
-				var insert uint = uint(base - next_emit)
+				var insert uint = uint(base - nextEmit)
 				ip += int(matched)
 				if insert < 6210 {
-					emitInsertLen1(insert, cmd_depth, cmd_bits, cmd_histo[:], storage_ix, storage)
-				} else if shouldUseUncompressedMode(in[metablock_start:], in[next_emit:], insert, literal_ratio) {
-					emitUncompressedMetaBlock1(in[metablock_start:], in[base:], mlen_storage_ix-3, storage_ix, storage)
-					input_size -= uint(base - input)
+					emitInsertLen1(insert, cmdDepth, cmdBits, cmdHisto[:], storageIx, storage)
+				} else if shouldUseUncompressedMode(in[metablockStart:], in[nextEmit:], insert, literalRatio) {
+					emitUncompressedMetaBlock1(in[metablockStart:], in[base:], mlenStorageIx-3, storageIx, storage)
+					inputSize -= uint(base - input)
 					input = base
-					next_emit = input
-					goto next_block
+					nextEmit = input
+					goto nextBlock
 				} else {
-					emitLongInsertLen(insert, cmd_depth, cmd_bits, cmd_histo[:], storage_ix, storage)
+					emitLongInsertLen(insert, cmdDepth, cmdBits, cmdHisto[:], storageIx, storage)
 				}
 
-				emitLiterals(in[next_emit:], insert, lit_depth[:], lit_bits[:], storage_ix, storage)
-				if distance == last_distance {
-					writeBits(uint(cmd_depth[64]), uint64(cmd_bits[64]), storage_ix, storage)
-					cmd_histo[64]++
+				emitLiterals(in[nextEmit:], insert, litDepth[:], litBits[:], storageIx, storage)
+				if distance == lastDistance {
+					writeBits(uint(cmdDepth[64]), uint64(cmdBits[64]), storageIx, storage)
+					cmdHisto[64]++
 				} else {
-					emitDistance1(uint(distance), cmd_depth, cmd_bits, cmd_histo[:], storage_ix, storage)
-					last_distance = distance
+					emitDistance1(uint(distance), cmdDepth, cmdBits, cmdHisto[:], storageIx, storage)
+					lastDistance = distance
 				}
 
-				emitCopyLenLastDistance1(matched, cmd_depth, cmd_bits, cmd_histo[:], storage_ix, storage)
+				emitCopyLenLastDistance1(matched, cmdDepth, cmdBits, cmdHisto[:], storageIx, storage)
 
-				next_emit = ip
-				if ip >= ip_limit {
-					goto emit_remainder
+				nextEmit = ip
+				if ip >= ipLimit {
+					goto emitRemainder
 				}
 
 				/* We could immediately start working at ip now, but to improve
 				   compression we first update "table" with the hashes of some positions
 				   within the last copy. */
 				{
-					var input_bytes uint64 = binary.LittleEndian.Uint64(in[ip-3:])
-					var prev_hash uint32 = hashBytesAtOffset5(input_bytes, 0, shift)
-					var cur_hash uint32 = hashBytesAtOffset5(input_bytes, 3, shift)
-					table[prev_hash] = int(ip - base_ip - 3)
-					prev_hash = hashBytesAtOffset5(input_bytes, 1, shift)
-					table[prev_hash] = int(ip - base_ip - 2)
-					prev_hash = hashBytesAtOffset5(input_bytes, 2, shift)
-					table[prev_hash] = int(ip - base_ip - 1)
+					var inputBytes uint64 = binary.LittleEndian.Uint64(in[ip-3:])
+					var prevHash uint32 = hashBytesAtOffset5(inputBytes, 0, shift)
+					var curHash uint32 = hashBytesAtOffset5(inputBytes, 3, shift)
+					table[prevHash] = int(ip - baseIp - 3)
+					prevHash = hashBytesAtOffset5(inputBytes, 1, shift)
+					table[prevHash] = int(ip - baseIp - 2)
+					prevHash = hashBytesAtOffset5(inputBytes, 2, shift)
+					table[prevHash] = int(ip - baseIp - 1)
 
-					candidate = base_ip + table[cur_hash]
-					table[cur_hash] = int(ip - base_ip)
+					candidate = baseIp + table[curHash]
+					table[curHash] = int(ip - baseIp)
 				}
 			}
 
@@ -686,108 +686,108 @@ emit_commands:
 				/* We have a 5-byte match at ip, and no need to emit any literal bytes
 				   prior to ip. */
 
-				var matched uint = 5 + findMatchLengthWithLimit(in[candidate+5:], in[ip+5:], uint(ip_end-ip)-5)
-				if ip-candidate > maxDistance_compress_fragment {
+				var matched uint = 5 + findMatchLengthWithLimit(in[candidate+5:], in[ip+5:], uint(ipEnd-ip)-5)
+				if ip-candidate > maxdistanceCompressFragment {
 					break
 				}
 				ip += int(matched)
-				last_distance = int(base - candidate) /* > 0 */
-				emitCopyLen1(matched, cmd_depth, cmd_bits, cmd_histo[:], storage_ix, storage)
-				emitDistance1(uint(last_distance), cmd_depth, cmd_bits, cmd_histo[:], storage_ix, storage)
+				lastDistance = int(base - candidate) /* > 0 */
+				emitCopyLen1(matched, cmdDepth, cmdBits, cmdHisto[:], storageIx, storage)
+				emitDistance1(uint(lastDistance), cmdDepth, cmdBits, cmdHisto[:], storageIx, storage)
 
-				next_emit = ip
-				if ip >= ip_limit {
-					goto emit_remainder
+				nextEmit = ip
+				if ip >= ipLimit {
+					goto emitRemainder
 				}
 
 				/* We could immediately start working at ip now, but to improve
 				   compression we first update "table" with the hashes of some positions
 				   within the last copy. */
 				{
-					var input_bytes uint64 = binary.LittleEndian.Uint64(in[ip-3:])
-					var prev_hash uint32 = hashBytesAtOffset5(input_bytes, 0, shift)
-					var cur_hash uint32 = hashBytesAtOffset5(input_bytes, 3, shift)
-					table[prev_hash] = int(ip - base_ip - 3)
-					prev_hash = hashBytesAtOffset5(input_bytes, 1, shift)
-					table[prev_hash] = int(ip - base_ip - 2)
-					prev_hash = hashBytesAtOffset5(input_bytes, 2, shift)
-					table[prev_hash] = int(ip - base_ip - 1)
+					var inputBytes uint64 = binary.LittleEndian.Uint64(in[ip-3:])
+					var prevHash uint32 = hashBytesAtOffset5(inputBytes, 0, shift)
+					var curHash uint32 = hashBytesAtOffset5(inputBytes, 3, shift)
+					table[prevHash] = int(ip - baseIp - 3)
+					prevHash = hashBytesAtOffset5(inputBytes, 1, shift)
+					table[prevHash] = int(ip - baseIp - 2)
+					prevHash = hashBytesAtOffset5(inputBytes, 2, shift)
+					table[prevHash] = int(ip - baseIp - 1)
 
-					candidate = base_ip + table[cur_hash]
-					table[cur_hash] = int(ip - base_ip)
+					candidate = baseIp + table[curHash]
+					table[curHash] = int(ip - baseIp)
 				}
 			}
 
 			ip++
-			next_hash = hash5(in[ip:], shift)
+			nextHash = hash5(in[ip:], shift)
 		}
 	}
 
-emit_remainder:
-	assert(next_emit <= ip_end)
-	input += int(block_size)
-	input_size -= block_size
-	block_size = brotli_min_size_t(input_size, compressFragmentFastImpl_kMergeBlockSize)
+emitRemainder:
+	assert(nextEmit <= ipEnd)
+	input += int(blockSize)
+	inputSize -= blockSize
+	blockSize = brotliMinSizeT(inputSize, compressfragmentfastimplKmergeblocksize)
 
 	/* Decide if we want to continue this meta-block instead of emitting the
 	   last insert-only command. */
-	if input_size > 0 && total_block_size+block_size <= 1<<20 && shouldMergeBlock(in[input:], block_size, lit_depth[:]) {
-		assert(total_block_size > 1<<16)
+	if inputSize > 0 && totalBlockSize+blockSize <= 1<<20 && shouldMergeBlock(in[input:], blockSize, litDepth[:]) {
+		assert(totalBlockSize > 1<<16)
 
 		/* Update the size of the current meta-block and continue emitting commands.
 		   We can do this because the current size and the new size both have 5
 		   nibbles. */
-		total_block_size += block_size
+		totalBlockSize += blockSize
 
-		updateBits(20, uint32(total_block_size-1), mlen_storage_ix, storage)
-		goto emit_commands
+		updateBits(20, uint32(totalBlockSize-1), mlenStorageIx, storage)
+		goto emitCommands
 	}
 
 	/* Emit the remaining bytes as literals. */
-	if next_emit < ip_end {
-		var insert uint = uint(ip_end - next_emit)
+	if nextEmit < ipEnd {
+		var insert uint = uint(ipEnd - nextEmit)
 		if insert < 6210 {
-			emitInsertLen1(insert, cmd_depth, cmd_bits, cmd_histo[:], storage_ix, storage)
-			emitLiterals(in[next_emit:], insert, lit_depth[:], lit_bits[:], storage_ix, storage)
-		} else if shouldUseUncompressedMode(in[metablock_start:], in[next_emit:], insert, literal_ratio) {
-			emitUncompressedMetaBlock1(in[metablock_start:], in[ip_end:], mlen_storage_ix-3, storage_ix, storage)
+			emitInsertLen1(insert, cmdDepth, cmdBits, cmdHisto[:], storageIx, storage)
+			emitLiterals(in[nextEmit:], insert, litDepth[:], litBits[:], storageIx, storage)
+		} else if shouldUseUncompressedMode(in[metablockStart:], in[nextEmit:], insert, literalRatio) {
+			emitUncompressedMetaBlock1(in[metablockStart:], in[ipEnd:], mlenStorageIx-3, storageIx, storage)
 		} else {
-			emitLongInsertLen(insert, cmd_depth, cmd_bits, cmd_histo[:], storage_ix, storage)
-			emitLiterals(in[next_emit:], insert, lit_depth[:], lit_bits[:], storage_ix, storage)
+			emitLongInsertLen(insert, cmdDepth, cmdBits, cmdHisto[:], storageIx, storage)
+			emitLiterals(in[nextEmit:], insert, litDepth[:], litBits[:], storageIx, storage)
 		}
 	}
 
-	next_emit = ip_end
+	nextEmit = ipEnd
 
 	/* If we have more data, write a new meta-block header and prefix codes and
 	   then continue emitting commands. */
-next_block:
-	if input_size > 0 {
-		metablock_start = input
-		block_size = brotli_min_size_t(input_size, compressFragmentFastImpl_kFirstBlockSize)
-		total_block_size = block_size
+nextBlock:
+	if inputSize > 0 {
+		metablockStart = input
+		blockSize = brotliMinSizeT(inputSize, compressfragmentfastimplKfirstblocksize)
+		totalBlockSize = blockSize
 
 		/* Save the bit position of the MLEN field of the meta-block header, so that
 		   we can update it later if we decide to extend this meta-block. */
-		mlen_storage_ix = *storage_ix + 3
+		mlenStorageIx = *storageIx + 3
 
-		storeMetaBlockHeader1(block_size, false, storage_ix, storage)
+		storeMetaBlockHeader1(blockSize, false, storageIx, storage)
 
 		/* No block splits, no contexts. */
-		writeBits(13, 0, storage_ix, storage)
+		writeBits(13, 0, storageIx, storage)
 
-		literal_ratio = buildAndStoreLiteralPrefixCode(in[input:], block_size, lit_depth[:], lit_bits[:], storage_ix, storage)
-		buildAndStoreCommandPrefixCode1(cmd_histo[:], cmd_depth, cmd_bits, storage_ix, storage)
-		goto emit_commands
+		literalRatio = buildAndStoreLiteralPrefixCode(in[input:], blockSize, litDepth[:], litBits[:], storageIx, storage)
+		buildAndStoreCommandPrefixCode1(cmdHisto[:], cmdDepth, cmdBits, storageIx, storage)
+		goto emitCommands
 	}
 
-	if !is_last {
+	if !isLast {
 		/* If this is not the last block, update the command and distance prefix
 		   codes for the next block and store the compressed forms. */
-		cmd_code[0] = 0
+		cmdCode[0] = 0
 
-		*cmd_code_numbits = 0
-		buildAndStoreCommandPrefixCode1(cmd_histo[:], cmd_depth, cmd_bits, cmd_code_numbits, cmd_code)
+		*cmdCodeNumbits = 0
+		buildAndStoreCommandPrefixCode1(cmdHisto[:], cmdDepth, cmdBits, cmdCodeNumbits, cmdCode)
 	}
 }
 
@@ -816,28 +816,28 @@ Compresses "input" string to the "*storage" buffer as one or more complete
 	OUTPUT: maximal copy distance <= |input_size|
 	OUTPUT: maximal copy distance <= BROTLI_MAX_BACKWARD_LIMIT(18)
 */
-func compressFragmentFast(input []byte, input_size uint, is_last bool, table []int, table_size uint, cmd_depth []byte, cmd_bits []uint16, cmd_code_numbits *uint, cmd_code []byte, storage_ix *uint, storage []byte) {
-	var initial_storage_ix uint = *storage_ix
-	var table_bits uint = uint(log2FloorNonZero(table_size))
+func compressFragmentFast(input []byte, inputSize uint, isLast bool, table []int, tableSize uint, cmdDepth []byte, cmdBits []uint16, cmdCodeNumbits *uint, cmdCode []byte, storageIx *uint, storage []byte) {
+	var initialStorageIx uint = *storageIx
+	var tableBits uint = uint(log2FloorNonZero(tableSize))
 
-	if input_size == 0 {
-		assert(is_last)
-		writeBits(1, 1, storage_ix, storage) /* islast */
-		writeBits(1, 1, storage_ix, storage) /* isempty */
-		*storage_ix = (*storage_ix + 7) &^ 7
+	if inputSize == 0 {
+		assert(isLast)
+		writeBits(1, 1, storageIx, storage) /* islast */
+		writeBits(1, 1, storageIx, storage) /* isempty */
+		*storageIx = (*storageIx + 7) &^ 7
 		return
 	}
 
-	compressFragmentFastImpl(input, input_size, is_last, table, table_bits, cmd_depth, cmd_bits, cmd_code_numbits, cmd_code, storage_ix, storage)
+	compressFragmentFastImpl(input, inputSize, isLast, table, tableBits, cmdDepth, cmdBits, cmdCodeNumbits, cmdCode, storageIx, storage)
 
 	/* If output is larger than single uncompressed block, rewrite it. */
-	if *storage_ix-initial_storage_ix > 31+(input_size<<3) {
-		emitUncompressedMetaBlock1(input, input[input_size:], initial_storage_ix, storage_ix, storage)
+	if *storageIx-initialStorageIx > 31+(inputSize<<3) {
+		emitUncompressedMetaBlock1(input, input[inputSize:], initialStorageIx, storageIx, storage)
 	}
 
-	if is_last {
-		writeBits(1, 1, storage_ix, storage) /* islast */
-		writeBits(1, 1, storage_ix, storage) /* isempty */
-		*storage_ix = (*storage_ix + 7) &^ 7
+	if isLast {
+		writeBits(1, 1, storageIx, storage) /* islast */
+		writeBits(1, 1, storageIx, storage) /* isempty */
+		*storageIx = (*storageIx + 7) &^ 7
 	}
 }

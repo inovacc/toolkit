@@ -4,13 +4,13 @@ func utf8Position(last uint, c uint, clamp uint) uint {
 	if c < 128 {
 		return 0 /* Next one is the 'Byte 1' again. */
 	} else if c >= 192 { /* Next one is the 'Byte 2' of utf-8 encoding. */
-		return brotli_min_size_t(1, clamp)
+		return brotliMinSizeT(1, clamp)
 	} else {
 		/* Let's decide over the last byte if this ends the sequence. */
 		if last < 0xE0 {
 			return 0 /* Completed two or three byte coding. */ /* Next one is the 'Byte 3' of utf-8 encoding. */
 		} else {
-			return brotli_min_size_t(2, clamp)
+			return brotliMinSizeT(2, clamp)
 		}
 	}
 }
@@ -42,7 +42,7 @@ func estimateBitCostsForLiteralsUTF8(pos uint, len uint, mask uint, data []byte,
 	/* Bootstrap histograms. */
 	var histogram = [3][256]uint{[256]uint{0}}
 	var window_half uint = 495
-	var in_window uint = brotli_min_size_t(window_half, uint(len))
+	var in_window uint = brotliMinSizeT(window_half, uint(len))
 	var in_window_utf8 = [3]uint{0}
 	/* max_utf8 is 0 (normal ASCII single byte modeling),
 	   1 (for 2-byte UTF-8 modeling), or 2 (for 3-byte UTF-8 modeling). */
@@ -139,7 +139,7 @@ func estimateBitCostsForLiterals(pos uint, len uint, mask uint, data []byte, cos
 	} else {
 		var histogram = [256]uint{0}
 		var window_half uint = 2000
-		var in_window uint = brotli_min_size_t(window_half, uint(len))
+		var in_window uint = brotliMinSizeT(window_half, uint(len))
 		var i uint
 		/* Bootstrap histogram. */
 		for i = 0; i < in_window; i++ {

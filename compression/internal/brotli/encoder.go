@@ -60,11 +60,11 @@ func (e *Encoder) Encode(dst []byte, src []byte, matches []matchfinder.Match, la
 			// If the stream ends with unmatched bytes, we need a dummy copy length.
 			copyCode = 2
 		}
-		command := combineLengthCodes(insertCode, copyCode, false)
-		commandHisto[command]++
+		commandV := combineLengthCodes(insertCode, copyCode, false)
+		commandHisto[commandV]++
 		commandCount++
 
-		if command >= 128 && m.Length != 0 {
+		if commandV >= 128 && m.Length != 0 {
 			var distCode distanceCode
 			switch m.Distance {
 			case d[3]:
@@ -127,8 +127,8 @@ func (e *Encoder) Encode(dst []byte, src []byte, matches []matchfinder.Match, la
 			// If the stream ends with unmatched bytes, we need a dummy copy length.
 			copyCode = 2
 		}
-		command := combineLengthCodes(insertCode, copyCode, false)
-		e.bw.writeBits(uint(commandDepths[command]), uint64(commandBits[command]))
+		commandV := combineLengthCodes(insertCode, copyCode, false)
+		e.bw.writeBits(uint(commandDepths[commandV]), uint64(commandBits[commandV]))
 		if kInsExtra[insertCode] > 0 {
 			e.bw.writeBits(uint(kInsExtra[insertCode]), uint64(m.Unmatched)-uint64(kInsBase[insertCode]))
 		}
@@ -142,7 +142,7 @@ func (e *Encoder) Encode(dst []byte, src []byte, matches []matchfinder.Match, la
 			}
 		}
 
-		if command >= 128 && m.Length != 0 {
+		if commandV >= 128 && m.Length != 0 {
 			distCode := e.distCache[i]
 			e.bw.writeBits(uint(distanceDepths[distCode.code]), uint64(distanceBits[distCode.code]))
 			if distCode.nExtra > 0 {

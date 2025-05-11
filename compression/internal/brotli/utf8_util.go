@@ -56,18 +56,18 @@ func parseAsUTF8(symbol *int, input []byte, size uint) uint {
 }
 
 /* Returns 1 if at least min_fraction of the data is UTF8-encoded.*/
-func isMostlyUTF8(data []byte, pos uint, mask uint, length uint, min_fraction float64) bool {
-	var size_utf8 uint = 0
+func isMostlyUTF8(data []byte, pos uint, mask uint, length uint, minFraction float64) bool {
+	var sizeUtf8 uint = 0
 	var i uint = 0
 	for i < length {
 		var symbol int
-		current_data := data[(pos+i)&mask:]
-		var bytes_read uint = parseAsUTF8(&symbol, current_data, length-i)
-		i += bytes_read
+		currentData := data[(pos+i)&mask:]
+		var bytesRead uint = parseAsUTF8(&symbol, currentData, length-i)
+		i += bytesRead
 		if symbol < 0x110000 {
-			size_utf8 += bytes_read
+			sizeUtf8 += bytesRead
 		}
 	}
 
-	return float64(size_utf8) > min_fraction*float64(length)
+	return float64(sizeUtf8) > minFraction*float64(length)
 }

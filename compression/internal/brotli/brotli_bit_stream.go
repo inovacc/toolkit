@@ -439,7 +439,7 @@ func buildAndStoreHuffmanTree(histogram []uint32, histogram_length uint, alphabe
 }
 
 func sortHuffmanTree1(v0 huffmanTree, v1 huffmanTree) bool {
-	return v0.total_count_ < v1.total_count_
+	return v0.totalCount < v1.totalCount
 }
 
 var huffmanTreePool sync.Pool
@@ -525,7 +525,7 @@ func buildAndStoreHuffmanTreeFast(histogram []uint32, histogram_total uint, max_
 				for k = n - 1; k > 0; k-- {
 					var left int
 					var right int
-					if (*tree)[i].total_count_ <= (*tree)[j].total_count_ {
+					if (*tree)[i].totalCount <= (*tree)[j].totalCount {
 						left = i
 						i++
 					} else {
@@ -533,7 +533,7 @@ func buildAndStoreHuffmanTreeFast(histogram []uint32, histogram_total uint, max_
 						j++
 					}
 
-					if (*tree)[i].total_count_ <= (*tree)[j].total_count_ {
+					if (*tree)[i].totalCount <= (*tree)[j].totalCount {
 						right = i
 						i++
 					} else {
@@ -542,10 +542,10 @@ func buildAndStoreHuffmanTreeFast(histogram []uint32, histogram_total uint, max_
 					}
 
 					/* The sentinel node becomes the parent node. */
-					(*tree)[node-1].total_count_ = (*tree)[left].total_count_ + (*tree)[right].total_count_
+					(*tree)[node-1].totalCount = (*tree)[left].totalCount + (*tree)[right].totalCount
 
-					(*tree)[node-1].index_left_ = int16(left)
-					(*tree)[node-1].index_right_or_value_ = int16(right)
+					(*tree)[node-1].indexLeft = int16(left)
+					(*tree)[node-1].indexRightOrValue = int16(right)
 
 					/* Add back the last sentinel node. */
 					(*tree)[node] = sentinel
@@ -728,7 +728,7 @@ func buildAndStoreHuffmanTreeFastBW(histogram []uint32, histogram_total uint, ma
 				for k = n - 1; k > 0; k-- {
 					var left int
 					var right int
-					if (*tree)[i].total_count_ <= (*tree)[j].total_count_ {
+					if (*tree)[i].totalCount <= (*tree)[j].totalCount {
 						left = i
 						i++
 					} else {
@@ -736,7 +736,7 @@ func buildAndStoreHuffmanTreeFastBW(histogram []uint32, histogram_total uint, ma
 						j++
 					}
 
-					if (*tree)[i].total_count_ <= (*tree)[j].total_count_ {
+					if (*tree)[i].totalCount <= (*tree)[j].totalCount {
 						right = i
 						i++
 					} else {
@@ -745,10 +745,10 @@ func buildAndStoreHuffmanTreeFastBW(histogram []uint32, histogram_total uint, ma
 					}
 
 					/* The sentinel node becomes the parent node. */
-					(*tree)[node-1].total_count_ = (*tree)[left].total_count_ + (*tree)[right].total_count_
+					(*tree)[node-1].totalCount = (*tree)[left].totalCount + (*tree)[right].totalCount
 
-					(*tree)[node-1].index_left_ = int16(left)
-					(*tree)[node-1].index_right_or_value_ = int16(right)
+					(*tree)[node-1].indexLeft = int16(left)
+					(*tree)[node-1].indexRightOrValue = int16(right)
 
 					/* Add back the last sentinel node. */
 					(*tree)[node] = sentinel
@@ -916,7 +916,7 @@ func runLengthCodeZeros(in_size uint, v []uint32, out_size *uint, max_run_length
 			reps++
 		}
 
-		max_reps = brotli_max_uint32_t(reps, max_reps)
+		max_reps = brotliMaxUint32T(reps, max_reps)
 	}
 
 	if max_reps > 0 {
@@ -924,7 +924,7 @@ func runLengthCodeZeros(in_size uint, v []uint32, out_size *uint, max_run_length
 	} else {
 		max_prefix = 0
 	}
-	max_prefix = brotli_min_uint32_t(max_prefix, *max_run_length_prefix)
+	max_prefix = brotliMinUint32T(max_prefix, *max_run_length_prefix)
 	*max_run_length_prefix = max_prefix
 	*out_size = 0
 	for i = 0; i < in_size; {
@@ -1274,29 +1274,29 @@ func jumpToByteBoundary(storage_ix *uint, storage []byte) {
 func storeMetaBlock(input []byte, start_pos uint, length uint, mask uint, prev_byte byte, prev_byte2 byte, is_last bool, params *encoderParams, literal_context_mode int, commands []command, mb *metaBlockSplit, storage_ix *uint, storage []byte) {
 	var pos uint = start_pos
 	var i uint
-	var num_distance_symbols uint32 = params.dist.alphabet_size
+	var num_distance_symbols uint32 = params.dist.alphabetSize
 	var num_effective_distance_symbols uint32 = num_distance_symbols
 	var tree []huffmanTree
 	var literal_context_lut contextLUT = getContextLUT(literal_context_mode)
 	var dist *distanceParams = &params.dist
-	if params.large_window && num_effective_distance_symbols > numHistogramDistanceSymbols {
+	if params.largeWindow && num_effective_distance_symbols > numHistogramDistanceSymbols {
 		num_effective_distance_symbols = numHistogramDistanceSymbols
 	}
 
 	storeCompressedMetaBlockHeader(is_last, length, storage_ix, storage)
 
 	tree = make([]huffmanTree, maxHuffmanTreeSize)
-	literal_enc := getBlockEncoder(numLiteralSymbols, mb.literal_split.num_types, mb.literal_split.types, mb.literal_split.lengths, mb.literal_split.num_blocks)
-	command_enc := getBlockEncoder(numCommandSymbols, mb.command_split.num_types, mb.command_split.types, mb.command_split.lengths, mb.command_split.num_blocks)
-	distance_enc := getBlockEncoder(uint(num_effective_distance_symbols), mb.distance_split.num_types, mb.distance_split.types, mb.distance_split.lengths, mb.distance_split.num_blocks)
+	literal_enc := getBlockEncoder(numLiteralSymbols, mb.literal_split.numTypes, mb.literal_split.types, mb.literal_split.lengths, mb.literal_split.numBlocks)
+	command_enc := getBlockEncoder(numCommandSymbols, mb.command_split.numTypes, mb.command_split.types, mb.command_split.lengths, mb.command_split.numBlocks)
+	distance_enc := getBlockEncoder(uint(num_effective_distance_symbols), mb.distance_split.numTypes, mb.distance_split.types, mb.distance_split.lengths, mb.distance_split.numBlocks)
 
 	buildAndStoreBlockSwitchEntropyCodes(literal_enc, tree, storage_ix, storage)
 	buildAndStoreBlockSwitchEntropyCodes(command_enc, tree, storage_ix, storage)
 	buildAndStoreBlockSwitchEntropyCodes(distance_enc, tree, storage_ix, storage)
 
-	writeBits(2, uint64(dist.distance_postfix_bits), storage_ix, storage)
-	writeBits(4, uint64(dist.num_direct_distance_codes)>>dist.distance_postfix_bits, storage_ix, storage)
-	for i = 0; i < mb.literal_split.num_types; i++ {
+	writeBits(2, uint64(dist.distancePostfixBits), storage_ix, storage)
+	writeBits(4, uint64(dist.numDirectDistanceCodes)>>dist.distancePostfixBits, storage_ix, storage)
+	for i = 0; i < mb.literal_split.numTypes; i++ {
 		writeBits(2, uint64(literal_context_mode), storage_ix, storage)
 	}
 
@@ -1419,7 +1419,7 @@ func storeMetaBlockTrivial(input []byte, start_pos uint, length uint, mask uint,
 	var dist_depth [maxSimpleDistanceAlphabetSize]byte
 	var dist_bits [maxSimpleDistanceAlphabetSize]uint16
 	var tree []huffmanTree
-	var num_distance_symbols uint32 = params.dist.alphabet_size
+	var num_distance_symbols uint32 = params.dist.alphabetSize
 
 	storeCompressedMetaBlockHeader(is_last, length, storage_ix, storage)
 
@@ -1443,7 +1443,7 @@ func storeMetaBlockTrivial(input []byte, start_pos uint, length uint, mask uint,
 }
 
 func storeMetaBlockFast(input []byte, start_pos uint, length uint, mask uint, is_last bool, params *encoderParams, commands []command, storage_ix *uint, storage []byte) {
-	var num_distance_symbols uint32 = params.dist.alphabet_size
+	var num_distance_symbols uint32 = params.dist.alphabetSize
 	var distance_alphabet_bits uint32 = log2FloorNonZero(uint(num_distance_symbols-1)) + 1
 
 	storeCompressedMetaBlockHeader(is_last, length, storage_ix, storage)
@@ -1487,13 +1487,13 @@ func storeMetaBlockFast(input []byte, start_pos uint, length uint, mask uint, is
 		histogramClearCommand(&cmd_histo)
 		histogramClearDistance(&dist_histo)
 		buildHistograms(input, start_pos, mask, commands, &lit_histo, &cmd_histo, &dist_histo)
-		buildAndStoreHuffmanTreeFast(lit_histo.data_[:], lit_histo.total_count_, /* max_bits = */
+		buildAndStoreHuffmanTreeFast(lit_histo.data_[:], lit_histo.totalCount, /* max_bits = */
 			8, lit_depth[:], lit_bits[:], storage_ix, storage)
 
-		buildAndStoreHuffmanTreeFast(cmd_histo.data_[:], cmd_histo.total_count_, /* max_bits = */
+		buildAndStoreHuffmanTreeFast(cmd_histo.data_[:], cmd_histo.totalCount, /* max_bits = */
 			10, cmd_depth[:], cmd_bits[:], storage_ix, storage)
 
-		buildAndStoreHuffmanTreeFast(dist_histo.data_[:], dist_histo.total_count_, /* max_bits = */
+		buildAndStoreHuffmanTreeFast(dist_histo.data_[:], dist_histo.totalCount, /* max_bits = */
 			uint(distance_alphabet_bits), dist_depth[:], dist_bits[:], storage_ix, storage)
 
 		storeDataWithHuffmanCodes(input, start_pos, mask, commands, lit_depth[:], lit_bits[:], cmd_depth[:], cmd_bits[:], dist_depth[:], dist_bits[:], storage_ix, storage)

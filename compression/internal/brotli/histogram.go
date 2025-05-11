@@ -6,15 +6,15 @@ import "math"
 const numHistogramDistanceSymbols = 544
 
 type histogramLiteral struct {
-	data_        [numLiteralSymbols]uint32
-	total_count_ uint
-	bit_cost_    float64
+	data_      [numLiteralSymbols]uint32
+	totalCount uint
+	bitCost    float64
 }
 
 func histogramClearLiteral(self *histogramLiteral) {
 	self.data_ = [numLiteralSymbols]uint32{}
-	self.total_count_ = 0
-	self.bit_cost_ = math.MaxFloat64
+	self.totalCount = 0
+	self.bitCost = math.MaxFloat64
 }
 
 func clearHistogramsLiteral(array []histogramLiteral, length uint) {
@@ -26,11 +26,11 @@ func clearHistogramsLiteral(array []histogramLiteral, length uint) {
 
 func histogramAddLiteral(self *histogramLiteral, val uint) {
 	self.data_[val]++
-	self.total_count_++
+	self.totalCount++
 }
 
 func histogramAddVectorLiteral(self *histogramLiteral, p []byte, n uint) {
-	self.total_count_ += n
+	self.totalCount += n
 	n += 1
 	for {
 		n--
@@ -44,7 +44,7 @@ func histogramAddVectorLiteral(self *histogramLiteral, p []byte, n uint) {
 
 func histogramAddHistogramLiteral(self *histogramLiteral, v *histogramLiteral) {
 	var i uint
-	self.total_count_ += v.total_count_
+	self.totalCount += v.totalCount
 	for i = 0; i < numLiteralSymbols; i++ {
 		self.data_[i] += v.data_[i]
 	}
@@ -55,15 +55,15 @@ func histogramDataSizeLiteral() uint {
 }
 
 type histogramCommand struct {
-	data_        [numCommandSymbols]uint32
-	total_count_ uint
-	bit_cost_    float64
+	data_      [numCommandSymbols]uint32
+	totalCount uint
+	bitCost    float64
 }
 
 func histogramClearCommand(self *histogramCommand) {
 	self.data_ = [numCommandSymbols]uint32{}
-	self.total_count_ = 0
-	self.bit_cost_ = math.MaxFloat64
+	self.totalCount = 0
+	self.bitCost = math.MaxFloat64
 }
 
 func clearHistogramsCommand(array []histogramCommand, length uint) {
@@ -75,11 +75,11 @@ func clearHistogramsCommand(array []histogramCommand, length uint) {
 
 func histogramAddCommand(self *histogramCommand, val uint) {
 	self.data_[val]++
-	self.total_count_++
+	self.totalCount++
 }
 
 func histogramAddVectorCommand(self *histogramCommand, p []uint16, n uint) {
-	self.total_count_ += n
+	self.totalCount += n
 	n += 1
 	for {
 		n--
@@ -93,7 +93,7 @@ func histogramAddVectorCommand(self *histogramCommand, p []uint16, n uint) {
 
 func histogramAddHistogramCommand(self *histogramCommand, v *histogramCommand) {
 	var i uint
-	self.total_count_ += v.total_count_
+	self.totalCount += v.totalCount
 	for i = 0; i < numCommandSymbols; i++ {
 		self.data_[i] += v.data_[i]
 	}
@@ -104,15 +104,15 @@ func histogramDataSizeCommand() uint {
 }
 
 type histogramDistance struct {
-	data_        [numDistanceSymbols]uint32
-	total_count_ uint
-	bit_cost_    float64
+	data_      [numDistanceSymbols]uint32
+	totalCount uint
+	bitCost    float64
 }
 
 func histogramClearDistance(self *histogramDistance) {
 	self.data_ = [numDistanceSymbols]uint32{}
-	self.total_count_ = 0
-	self.bit_cost_ = math.MaxFloat64
+	self.totalCount = 0
+	self.bitCost = math.MaxFloat64
 }
 
 func clearHistogramsDistance(array []histogramDistance, length uint) {
@@ -124,11 +124,11 @@ func clearHistogramsDistance(array []histogramDistance, length uint) {
 
 func histogramAddDistance(self *histogramDistance, val uint) {
 	self.data_[val]++
-	self.total_count_++
+	self.totalCount++
 }
 
 func histogramAddVectorDistance(self *histogramDistance, p []uint16, n uint) {
-	self.total_count_ += n
+	self.totalCount += n
 	n += 1
 	for {
 		n--
@@ -142,7 +142,7 @@ func histogramAddVectorDistance(self *histogramDistance, p []uint16, n uint) {
 
 func histogramAddHistogramDistance(self *histogramDistance, v *histogramDistance) {
 	var i uint
-	self.total_count_ += v.total_count_
+	self.totalCount += v.totalCount
 	for i = 0; i < numDistanceSymbols; i++ {
 		self.data_[i] += v.data_[i]
 	}
@@ -180,46 +180,46 @@ func blockSplitIteratorNext(self *blockSplitIterator) {
 	self.length_--
 }
 
-func buildHistogramsWithContext(cmds []command, literal_split *blockSplit, insert_and_copy_split *blockSplit, dist_split *blockSplit, ringbuffer []byte, start_pos uint, mask uint, prev_byte byte, prev_byte2 byte, context_modes []int, literal_histograms []histogramLiteral, insert_and_copy_histograms []histogramCommand, copy_dist_histograms []histogramDistance) {
-	var pos uint = start_pos
-	var literal_it blockSplitIterator
-	var insert_and_copy_it blockSplitIterator
-	var dist_it blockSplitIterator
+func buildHistogramsWithContext(cmds []command, literalSplit *blockSplit, insertAndCopySplit *blockSplit, distSplit *blockSplit, ringbuffer []byte, startPos uint, mask uint, prevByte byte, prevByte2 byte, contextModes []int, literalHistograms []histogramLiteral, insertAndCopyHistograms []histogramCommand, copyDistHistograms []histogramDistance) {
+	var pos uint = startPos
+	var literalIt blockSplitIterator
+	var insertAndCopyIt blockSplitIterator
+	var distIt blockSplitIterator
 
-	initBlockSplitIterator(&literal_it, literal_split)
-	initBlockSplitIterator(&insert_and_copy_it, insert_and_copy_split)
-	initBlockSplitIterator(&dist_it, dist_split)
+	initBlockSplitIterator(&literalIt, literalSplit)
+	initBlockSplitIterator(&insertAndCopyIt, insertAndCopySplit)
+	initBlockSplitIterator(&distIt, distSplit)
 	for i := range cmds {
 		var cmd *command = &cmds[i]
 		var j uint
-		blockSplitIteratorNext(&insert_and_copy_it)
-		histogramAddCommand(&insert_and_copy_histograms[insert_and_copy_it.type_], uint(cmd.cmd_prefix_))
+		blockSplitIteratorNext(&insertAndCopyIt)
+		histogramAddCommand(&insertAndCopyHistograms[insertAndCopyIt.type_], uint(cmd.cmd_prefix_))
 
 		/* TODO: unwrap iterator blocks. */
 		for j = uint(cmd.insert_len_); j != 0; j-- {
 			var context uint
-			blockSplitIteratorNext(&literal_it)
-			context = literal_it.type_
-			if context_modes != nil {
-				var lut contextLUT = getContextLUT(context_modes[context])
-				context = (context << literalContextBits) + uint(getContext(prev_byte, prev_byte2, lut))
+			blockSplitIteratorNext(&literalIt)
+			context = literalIt.type_
+			if contextModes != nil {
+				var lut contextLUT = getContextLUT(contextModes[context])
+				context = (context << literalContextBits) + uint(getContext(prevByte, prevByte2, lut))
 			}
 
-			histogramAddLiteral(&literal_histograms[context], uint(ringbuffer[pos&mask]))
-			prev_byte2 = prev_byte
-			prev_byte = ringbuffer[pos&mask]
+			histogramAddLiteral(&literalHistograms[context], uint(ringbuffer[pos&mask]))
+			prevByte2 = prevByte
+			prevByte = ringbuffer[pos&mask]
 			pos++
 		}
 
 		pos += uint(commandCopyLen(cmd))
 		if commandCopyLen(cmd) != 0 {
-			prev_byte2 = ringbuffer[(pos-2)&mask]
-			prev_byte = ringbuffer[(pos-1)&mask]
+			prevByte2 = ringbuffer[(pos-2)&mask]
+			prevByte = ringbuffer[(pos-1)&mask]
 			if cmd.cmd_prefix_ >= 128 {
 				var context uint
-				blockSplitIteratorNext(&dist_it)
-				context = uint(uint32(dist_it.type_<<distanceContextBits) + commandDistanceContext(cmd))
-				histogramAddDistance(&copy_dist_histograms[context], uint(cmd.dist_prefix_)&0x3FF)
+				blockSplitIteratorNext(&distIt)
+				context = uint(uint32(distIt.type_<<distanceContextBits) + commandDistanceContext(cmd))
+				histogramAddDistance(&copyDistHistograms[context], uint(cmd.dist_prefix_)&0x3FF)
 			}
 		}
 	}

@@ -487,13 +487,13 @@ func (r badRand) Read(buf []byte) (int, error) {
 }
 
 func TestBadRand(t *testing.T) {
-	SetRand(badRand{})
+	SetRandUUID(badRand{})
 	uuid1 := New()
 	uuid2 := New()
 	if uuid1 != uuid2 {
 		t.Errorf("expected duplicates, got %q and %q", uuid1, uuid2)
 	}
-	SetRand(nil)
+	SetRandUUID(nil)
 	uuid1 = New()
 	uuid2 = New()
 	if uuid1 == uuid2 {
@@ -504,11 +504,11 @@ func TestBadRand(t *testing.T) {
 func TestSetRand(t *testing.T) {
 	myString := "805-9dd6-1a877cb526c678e71d38-7122-44c0-9b7c-04e7001cc78783ac3e82-47a3-4cc3-9951-13f3339d88088f5d685a-11f7-4078-ada9-de44ad2daeb7"
 
-	SetRand(strings.NewReader(myString))
+	SetRandUUID(strings.NewReader(myString))
 	uuid1 := New()
 	uuid2 := New()
 
-	SetRand(strings.NewReader(myString))
+	SetRandUUID(strings.NewReader(myString))
 	uuid3 := New()
 	uuid4 := New()
 
@@ -544,14 +544,14 @@ func TestRandomFromReader(t *testing.T) {
 func TestRandPool(t *testing.T) {
 	myString := "8059ddhdle77cb52"
 	EnableRandPool()
-	SetRand(strings.NewReader(myString))
-	_, err := NewRandom()
+	SetRandUUID(strings.NewReader(myString))
+	_, err := NewRandomUUID()
 	if err == nil {
 		t.Errorf("expecting an error as reader has no more bytes")
 	}
 	DisableRandPool()
-	SetRand(strings.NewReader(myString))
-	_, err = NewRandom()
+	SetRandUUID(strings.NewReader(myString))
+	_, err = NewRandomUUID()
 	if err != nil {
 		t.Errorf("failed generating UUID from a reader")
 	}
@@ -685,7 +685,7 @@ func BenchmarkParseBytesCopy(b *testing.B) {
 
 func BenchmarkNew(b *testing.B) {
 	for i := 0; i < b.N; i++ {
-		New()
+		NewUUID()
 	}
 }
 
@@ -746,7 +746,7 @@ func BenchmarkParseLen36Corrupted(b *testing.B) {
 func BenchmarkUUID_New(b *testing.B) {
 	b.RunParallel(func(pb *testing.PB) {
 		for pb.Next() {
-			_, err := NewRandom()
+			_, err := NewRandomUUID()
 			if err != nil {
 				b.Fatal(err)
 			}
@@ -758,7 +758,7 @@ func BenchmarkUUID_NewPooled(b *testing.B) {
 	EnableRandPool()
 	b.RunParallel(func(pb *testing.PB) {
 		for pb.Next() {
-			_, err := NewRandom()
+			_, err := NewRandomUUID()
 			if err != nil {
 				b.Fatal(err)
 			}
@@ -823,7 +823,7 @@ func TestVersion6(t *testing.T) {
 // uuid v7 time is only unix milliseconds, so
 // uuid1.Time() == uuid2.Time() is right, but uuid1 must != uuid2
 func TestVersion7(t *testing.T) {
-	SetRand(nil)
+	SetRandUUID(nil)
 	m := make(map[string]bool)
 	for x := 1; x < 128; x++ {
 		uuid, err := NewV7()
@@ -847,7 +847,7 @@ func TestVersion7(t *testing.T) {
 // uuid v7 time is only unix milliseconds, so
 // uuid1.Time() == uuid2.Time() is right, but uuid1 must != uuid2
 func TestVersion7_pooled(t *testing.T) {
-	SetRand(nil)
+	SetRandUUID(nil)
 	EnableRandPool()
 	defer DisableRandPool()
 
@@ -914,8 +914,8 @@ func TestVersion7MonotonicityStrict(t *testing.T) {
 		timeNow = time.Now
 	}()
 
-	SetRand(fakeRand{})
-	defer SetRand(nil)
+	SetRandUUID(fakeRand{})
+	defer SetRandUUID(nil)
 
 	length := 100000 // > 3906
 	u1 := MustUUID(NewV7()).String()

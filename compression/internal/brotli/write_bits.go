@@ -28,7 +28,7 @@ This function writes bits into bytes in increasing addresses, and within
 	For n bits, we take the last 5 bits, OR that with high bits in BYTE-0,
 	and locate the rest in BYTE+1, BYTE+2, etc.
 */
-func writeBits(n_bits uint, bits uint64, pos *uint, array []byte) {
+func writeBits(nBits uint, bits uint64, pos *uint, array []byte) {
 	/* This branch of the code can write up to 56 bits at a time,
 	   7 bits are lost by being perhaps already in *p and at least
 	   1 bit is needed to initialize the bit-stream ahead (i.e. if 7
@@ -38,7 +38,7 @@ func writeBits(n_bits uint, bits uint64, pos *uint, array []byte) {
 	v := uint64(p[0])
 	v |= bits << (*pos & 7)
 	binary.LittleEndian.PutUint64(p, v)
-	*pos += n_bits
+	*pos += nBits
 }
 
 func writeSingleBit(bit bool, pos *uint, array []byte) {

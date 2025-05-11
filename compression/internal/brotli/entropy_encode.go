@@ -12,21 +12,21 @@ import "math"
 
 /* A node of a Huffman tree. */
 type huffmanTree struct {
-	total_count_          uint32
-	index_left_           int16
-	index_right_or_value_ int16
+	totalCount        uint32
+	indexLeft         int16
+	indexRightOrValue int16
 }
 
 func initHuffmanTree(self *huffmanTree, count uint32, left int16, right int16) {
-	self.total_count_ = count
-	self.index_left_ = left
-	self.index_right_or_value_ = right
+	self.totalCount = count
+	self.indexLeft = left
+	self.indexRightOrValue = right
 }
 
 /* Input size optimized Shell sort. */
 type huffmanTreeComparator func(huffmanTree, huffmanTree) bool
 
-var sortHuffmanTreeItems_gaps = []uint{132, 57, 23, 10, 4, 1}
+var sorthuffmantreeitemsGaps = []uint{132, 57, 23, 10, 4, 1}
 
 func sortHuffmanTreeItems(items []huffmanTree, n uint, comparator huffmanTreeComparator) {
 	if n < 13 {
@@ -57,7 +57,7 @@ func sortHuffmanTreeItems(items []huffmanTree, n uint, comparator huffmanTreeCom
 			g = 0
 		}
 		for ; g < 6; g++ {
-			var gap uint = sortHuffmanTreeItems_gaps[g]
+			var gap uint = sorthuffmantreeitemsGaps[g]
 			var i uint
 			for i = gap; i < n; i++ {
 				var j uint = i
@@ -73,23 +73,23 @@ func sortHuffmanTreeItems(items []huffmanTree, n uint, comparator huffmanTreeCom
 }
 
 /* Returns 1 if assignment of depths succeeded, otherwise 0. */
-func setDepth(p0 int, pool []huffmanTree, depth []byte, max_depth int) bool {
+func setDepth(p0 int, pool []huffmanTree, depth []byte, maxDepth int) bool {
 	var stack [16]int
 	var level int = 0
 	var p int = p0
-	assert(max_depth <= 15)
+	assert(maxDepth <= 15)
 	stack[0] = -1
 	for {
-		if pool[p].index_left_ >= 0 {
+		if pool[p].indexLeft >= 0 {
 			level++
-			if level > max_depth {
+			if level > maxDepth {
 				return false
 			}
-			stack[level] = int(pool[p].index_right_or_value_)
-			p = int(pool[p].index_left_)
+			stack[level] = int(pool[p].indexRightOrValue)
+			p = int(pool[p].indexLeft)
 			continue
 		} else {
-			depth[pool[p].index_right_or_value_] = byte(level)
+			depth[pool[p].indexRightOrValue] = byte(level)
 		}
 
 		for level >= 0 && stack[level] == -1 {
@@ -105,11 +105,11 @@ func setDepth(p0 int, pool []huffmanTree, depth []byte, max_depth int) bool {
 
 /* Sort the root nodes, least popular first. */
 func sortHuffmanTree(v0 huffmanTree, v1 huffmanTree) bool {
-	if v0.total_count_ != v1.total_count_ {
-		return v0.total_count_ < v1.total_count_
+	if v0.totalCount != v1.totalCount {
+		return v0.totalCount < v1.totalCount
 	}
 
-	return v0.index_right_or_value_ > v1.index_right_or_value_
+	return v0.indexRightOrValue > v1.indexRightOrValue
 }
 
 /*
@@ -129,8 +129,8 @@ This function will create a Huffman tree.
 
 	See http://en.wikipedia.org/wiki/Huffman_coding
 */
-func createHuffmanTree(data []uint32, length uint, tree_limit int, tree []huffmanTree, depth []byte) {
-	var count_limit uint32
+func createHuffmanTree(data []uint32, length uint, treeLimit int, tree []huffmanTree, depth []byte) {
+	var countLimit uint32
 	var sentinel huffmanTree
 	initHuffmanTree(&sentinel, math.MaxUint32, -1, -1)
 
@@ -138,7 +138,7 @@ func createHuffmanTree(data []uint32, length uint, tree_limit int, tree []huffma
 	   of this loop. Probably all of our block sizes will be smaller than
 	   that, so this loop is mostly of academic interest. If we actually
 	   would need this, we would be better off with the Katajainen algorithm. */
-	for count_limit = 1; ; count_limit *= 2 {
+	for countLimit = 1; ; countLimit *= 2 {
 		var n uint = 0
 		var i uint
 		var j uint
@@ -146,14 +146,14 @@ func createHuffmanTree(data []uint32, length uint, tree_limit int, tree []huffma
 		for i = length; i != 0; {
 			i--
 			if data[i] != 0 {
-				var count uint32 = brotli_max_uint32_t(data[i], count_limit)
+				var count uint32 = brotliMaxUint32T(data[i], countLimit)
 				initHuffmanTree(&tree[n], count, -1, int16(i))
 				n++
 			}
 		}
 
 		if n == 1 {
-			depth[tree[0].index_right_or_value_] = 1 /* Only one element. */
+			depth[tree[0].indexRightOrValue] = 1 /* Only one element. */
 			break
 		}
 
@@ -175,7 +175,7 @@ func createHuffmanTree(data []uint32, length uint, tree_limit int, tree []huffma
 		for k = n - 1; k != 0; k-- {
 			var left uint
 			var right uint
-			if tree[i].total_count_ <= tree[j].total_count_ {
+			if tree[i].totalCount <= tree[j].totalCount {
 				left = i
 				i++
 			} else {
@@ -183,7 +183,7 @@ func createHuffmanTree(data []uint32, length uint, tree_limit int, tree []huffma
 				j++
 			}
 
-			if tree[i].total_count_ <= tree[j].total_count_ {
+			if tree[i].totalCount <= tree[j].totalCount {
 				right = i
 				i++
 			} else {
@@ -192,17 +192,17 @@ func createHuffmanTree(data []uint32, length uint, tree_limit int, tree []huffma
 			}
 			{
 				/* The sentinel node becomes the parent node. */
-				var j_end uint = 2*n - k
-				tree[j_end].total_count_ = tree[left].total_count_ + tree[right].total_count_
-				tree[j_end].index_left_ = int16(left)
-				tree[j_end].index_right_or_value_ = int16(right)
+				var jEnd uint = 2*n - k
+				tree[jEnd].totalCount = tree[left].totalCount + tree[right].totalCount
+				tree[jEnd].indexLeft = int16(left)
+				tree[jEnd].indexRightOrValue = int16(right)
 
 				/* Add back the last sentinel node. */
-				tree[j_end+1] = sentinel
+				tree[jEnd+1] = sentinel
 			}
 		}
 
-		if setDepth(int(2*n-1), tree[0:], depth, tree_limit) {
+		if setDepth(int(2*n-1), tree[0:], depth, treeLimit) {
 			/* We need to pack the Huffman tree in tree_limit bits. If this was not
 			   successful, add fake entities to the lowest values and retry. */
 			break
@@ -221,36 +221,36 @@ func reverse(v []byte, start uint, end uint) {
 	}
 }
 
-func writeHuffmanTreeRepetitions(previous_value byte, value byte, repetitions uint, tree_size *uint, tree []byte, extra_bits_data []byte) {
+func writeHuffmanTreeRepetitions(previousValue byte, value byte, repetitions uint, treeSize *uint, tree []byte, extraBitsData []byte) {
 	assert(repetitions > 0)
-	if previous_value != value {
-		tree[*tree_size] = value
-		extra_bits_data[*tree_size] = 0
-		(*tree_size)++
+	if previousValue != value {
+		tree[*treeSize] = value
+		extraBitsData[*treeSize] = 0
+		*treeSize++
 		repetitions--
 	}
 
 	if repetitions == 7 {
-		tree[*tree_size] = value
-		extra_bits_data[*tree_size] = 0
-		(*tree_size)++
+		tree[*treeSize] = value
+		extraBitsData[*treeSize] = 0
+		*treeSize++
 		repetitions--
 	}
 
 	if repetitions < 3 {
 		var i uint
 		for i = 0; i < repetitions; i++ {
-			tree[*tree_size] = value
-			extra_bits_data[*tree_size] = 0
-			(*tree_size)++
+			tree[*treeSize] = value
+			extraBitsData[*treeSize] = 0
+			*treeSize++
 		}
 	} else {
-		var start uint = *tree_size
+		var start uint = *treeSize
 		repetitions -= 3
 		for {
-			tree[*tree_size] = repeatPreviousCodeLength
-			extra_bits_data[*tree_size] = byte(repetitions & 0x3)
-			(*tree_size)++
+			tree[*treeSize] = repeatPreviousCodeLength
+			extraBitsData[*treeSize] = byte(repetitions & 0x3)
+			*treeSize++
 			repetitions >>= 2
 			if repetitions == 0 {
 				break
@@ -259,33 +259,33 @@ func writeHuffmanTreeRepetitions(previous_value byte, value byte, repetitions ui
 			repetitions--
 		}
 
-		reverse(tree, start, *tree_size)
-		reverse(extra_bits_data, start, *tree_size)
+		reverse(tree, start, *treeSize)
+		reverse(extraBitsData, start, *treeSize)
 	}
 }
 
-func writeHuffmanTreeRepetitionsZeros(repetitions uint, tree_size *uint, tree []byte, extra_bits_data []byte) {
+func writeHuffmanTreeRepetitionsZeros(repetitions uint, treeSize *uint, tree []byte, extraBitsData []byte) {
 	if repetitions == 11 {
-		tree[*tree_size] = 0
-		extra_bits_data[*tree_size] = 0
-		(*tree_size)++
+		tree[*treeSize] = 0
+		extraBitsData[*treeSize] = 0
+		*treeSize++
 		repetitions--
 	}
 
 	if repetitions < 3 {
 		var i uint
 		for i = 0; i < repetitions; i++ {
-			tree[*tree_size] = 0
-			extra_bits_data[*tree_size] = 0
-			(*tree_size)++
+			tree[*treeSize] = 0
+			extraBitsData[*treeSize] = 0
+			*treeSize++
 		}
 	} else {
-		var start uint = *tree_size
+		var start uint = *treeSize
 		repetitions -= 3
 		for {
-			tree[*tree_size] = repeatZeroCodeLength
-			extra_bits_data[*tree_size] = byte(repetitions & 0x7)
-			(*tree_size)++
+			tree[*treeSize] = repeatZeroCodeLength
+			extraBitsData[*treeSize] = byte(repetitions & 0x7)
+			*treeSize++
 			repetitions >>= 3
 			if repetitions == 0 {
 				break
@@ -294,8 +294,8 @@ func writeHuffmanTreeRepetitionsZeros(repetitions uint, tree_size *uint, tree []
 			repetitions--
 		}
 
-		reverse(tree, start, *tree_size)
-		reverse(extra_bits_data, start, *tree_size)
+		reverse(tree, start, *treeSize)
+		reverse(extraBitsData, start, *treeSize)
 	}
 }
 
@@ -309,21 +309,21 @@ Change the population counts in a way that the consequent
 	counts contains the population counts.
 	good_for_rle is a buffer of at least length size
 */
-func optimizeHuffmanCountsForRLE(length uint, counts []uint32, good_for_rle []byte) {
-	var nonzero_count uint = 0
+func optimizeHuffmanCountsForRLE(length uint, counts []uint32, goodForRle []byte) {
+	var nonzeroCount uint = 0
 	var stride uint
 	var limit uint
 	var sum uint
-	var streak_limit uint = 1240
+	var streakLimit uint = 1240
 	var i uint
 	/* Let's make the Huffman code more compatible with RLE encoding. */
 	for i = 0; i < length; i++ {
 		if counts[i] != 0 {
-			nonzero_count++
+			nonzeroCount++
 		}
 	}
 
-	if nonzero_count < 16 {
+	if nonzeroCount < 16 {
 		return
 	}
 
@@ -338,12 +338,12 @@ func optimizeHuffmanCountsForRLE(length uint, counts []uint32, good_for_rle []by
 	/* Now counts[0..length - 1] does not have trailing zeros. */
 	{
 		var nonzeros uint = 0
-		var smallest_nonzero uint32 = 1 << 30
+		var smallestNonzero uint32 = 1 << 30
 		for i = 0; i < length; i++ {
 			if counts[i] != 0 {
 				nonzeros++
-				if smallest_nonzero > counts[i] {
-					smallest_nonzero = counts[i]
+				if smallestNonzero > counts[i] {
+					smallestNonzero = counts[i]
 				}
 			}
 		}
@@ -353,7 +353,7 @@ func optimizeHuffmanCountsForRLE(length uint, counts []uint32, good_for_rle []by
 			return
 		}
 
-		if smallest_nonzero < 4 {
+		if smallestNonzero < 4 {
 			var zeros uint = length - nonzeros
 			if zeros < 6 {
 				for i = 1; i < length-1; i++ {
@@ -372,7 +372,7 @@ func optimizeHuffmanCountsForRLE(length uint, counts []uint32, good_for_rle []by
 	/* 2) Let's mark all population counts that already can be encoded
 	   with an RLE code. */
 	for i := 0; i < int(length); i++ {
-		good_for_rle[i] = 0
+		goodForRle[i] = 0
 	}
 	{
 		var symbol uint32 = counts[0]
@@ -386,7 +386,7 @@ func optimizeHuffmanCountsForRLE(length uint, counts []uint32, good_for_rle []by
 				if (symbol == 0 && step >= 5) || (symbol != 0 && step >= 7) {
 					var k uint
 					for k = 0; k < step; k++ {
-						good_for_rle[i-k-1] = 1
+						goodForRle[i-k-1] = 1
 					}
 				}
 
@@ -407,7 +407,7 @@ func optimizeHuffmanCountsForRLE(length uint, counts []uint32, good_for_rle []by
 	limit = uint(256*(counts[0]+counts[1]+counts[2])/3 + 420)
 	sum = 0
 	for i = 0; i <= length; i++ {
-		if i == length || good_for_rle[i] != 0 || (i != 0 && good_for_rle[i-1] != 0) || (256*counts[i]-uint32(limit)+uint32(streak_limit)) >= uint32(2*streak_limit) {
+		if i == length || goodForRle[i] != 0 || (i != 0 && goodForRle[i-1] != 0) || (256*counts[i]-uint32(limit)+uint32(streakLimit)) >= uint32(2*streakLimit) {
 			if stride >= 4 || (stride >= 3 && sum == 0) {
 				var k uint
 				var count uint = (sum + stride/2) / stride
@@ -455,11 +455,11 @@ func optimizeHuffmanCountsForRLE(length uint, counts []uint32, good_for_rle []by
 	}
 }
 
-func decideOverRLEUse(depth []byte, length uint, use_rle_for_non_zero *bool, use_rle_for_zero *bool) {
-	var total_reps_zero uint = 0
-	var total_reps_non_zero uint = 0
-	var count_reps_zero uint = 1
-	var count_reps_non_zero uint = 1
+func decideOverRLEUse(depth []byte, length uint, useRleForNonZero *bool, useRleForZero *bool) {
+	var totalRepsZero uint = 0
+	var totalRepsNonZero uint = 0
+	var countRepsZero uint = 1
+	var countRepsNonZero uint = 1
 	var i uint
 	for i = 0; i < length; {
 		var value byte = depth[i]
@@ -470,20 +470,20 @@ func decideOverRLEUse(depth []byte, length uint, use_rle_for_non_zero *bool, use
 		}
 
 		if reps >= 3 && value == 0 {
-			total_reps_zero += reps
-			count_reps_zero++
+			totalRepsZero += reps
+			countRepsZero++
 		}
 
 		if reps >= 4 && value != 0 {
-			total_reps_non_zero += reps
-			count_reps_non_zero++
+			totalRepsNonZero += reps
+			countRepsNonZero++
 		}
 
 		i += reps
 	}
 
-	*use_rle_for_non_zero = total_reps_non_zero > count_reps_non_zero*2
-	*use_rle_for_zero = total_reps_zero > count_reps_zero*2
+	*useRleForNonZero = totalRepsNonZero > countRepsNonZero*2
+	*useRleForZero = totalRepsZero > countRepsZero*2
 }
 
 /*
@@ -492,16 +492,16 @@ Write a Huffman tree from bit depths into the bit-stream representation
 	of a Huffman tree. The generated Huffman tree is to be compressed once
 	more using a Huffman tree
 */
-func writeHuffmanTree(depth []byte, length uint, tree_size *uint, tree []byte, extra_bits_data []byte) {
-	var previous_value byte = initialRepeatedCodeLength
+func writeHuffmanTree(depth []byte, length uint, treeSize *uint, tree []byte, extraBitsData []byte) {
+	var previousValue byte = initialRepeatedCodeLength
 	var i uint
-	var use_rle_for_non_zero bool = false
-	var use_rle_for_zero bool = false
-	var new_length uint = length
+	var useRleForNonZero bool = false
+	var useRleForZero bool = false
+	var newLength uint = length
 	/* Throw away trailing zeros. */
 	for i = 0; i < length; i++ {
 		if depth[length-i-1] == 0 {
-			new_length--
+			newLength--
 		} else {
 			break
 		}
@@ -511,32 +511,32 @@ func writeHuffmanTree(depth []byte, length uint, tree_size *uint, tree []byte, e
 	if length > 50 {
 		/* Find RLE coding for longer codes.
 		   Shorter codes seem not to benefit from RLE. */
-		decideOverRLEUse(depth, new_length, &use_rle_for_non_zero, &use_rle_for_zero)
+		decideOverRLEUse(depth, newLength, &useRleForNonZero, &useRleForZero)
 	}
 
 	/* Actual RLE coding. */
-	for i = 0; i < new_length; {
+	for i = 0; i < newLength; {
 		var value byte = depth[i]
 		var reps uint = 1
-		if (value != 0 && use_rle_for_non_zero) || (value == 0 && use_rle_for_zero) {
+		if (value != 0 && useRleForNonZero) || (value == 0 && useRleForZero) {
 			var k uint
-			for k = i + 1; k < new_length && depth[k] == value; k++ {
+			for k = i + 1; k < newLength && depth[k] == value; k++ {
 				reps++
 			}
 		}
 
 		if value == 0 {
-			writeHuffmanTreeRepetitionsZeros(reps, tree_size, tree, extra_bits_data)
+			writeHuffmanTreeRepetitionsZeros(reps, treeSize, tree, extraBitsData)
 		} else {
-			writeHuffmanTreeRepetitions(previous_value, value, reps, tree_size, tree, extra_bits_data)
-			previous_value = value
+			writeHuffmanTreeRepetitions(previousValue, value, reps, treeSize, tree, extraBitsData)
+			previousValue = value
 		}
 
 		i += reps
 	}
 }
 
-var reverseBits_kLut = [16]uint{
+var reversebitsKlut = [16]uint{
 	0x00,
 	0x08,
 	0x04,
@@ -555,16 +555,16 @@ var reverseBits_kLut = [16]uint{
 	0x0F,
 }
 
-func reverseBits(num_bits uint, bits uint16) uint16 {
-	var retval uint = reverseBits_kLut[bits&0x0F]
+func reverseBits(numBits uint, bits uint16) uint16 {
+	var retval uint = reversebitsKlut[bits&0x0F]
 	var i uint
-	for i = 4; i < num_bits; i += 4 {
+	for i = 4; i < numBits; i += 4 {
 		retval <<= 4
 		bits = uint16(bits >> 4)
-		retval |= reverseBits_kLut[bits&0x0F]
+		retval |= reversebitsKlut[bits&0x0F]
 	}
 
-	retval >>= ((0 - num_bits) & 0x03)
+	retval >>= (0 - numBits) & 0x03
 	return uint16(retval)
 }
 
@@ -573,28 +573,28 @@ const maxHuffmanBits = 16
 
 /* Get the actual bit values for a tree of bit depths. */
 func convertBitDepthsToSymbols(depth []byte, len uint, bits []uint16) {
-	var bl_count = [maxHuffmanBits]uint16{0}
-	var next_code [maxHuffmanBits]uint16
+	var blCount = [maxHuffmanBits]uint16{0}
+	var nextCode [maxHuffmanBits]uint16
 	var i uint
 	/* In Brotli, all bit depths are [1..15]
 	   0 bit depth means that the symbol does not exist. */
 
 	var code int = 0
 	for i = 0; i < len; i++ {
-		bl_count[depth[i]]++
+		blCount[depth[i]]++
 	}
 
-	bl_count[0] = 0
-	next_code[0] = 0
+	blCount[0] = 0
+	nextCode[0] = 0
 	for i = 1; i < maxHuffmanBits; i++ {
-		code = (code + int(bl_count[i-1])) << 1
-		next_code[i] = uint16(code)
+		code = (code + int(blCount[i-1])) << 1
+		nextCode[i] = uint16(code)
 	}
 
 	for i = 0; i < len; i++ {
 		if depth[i] != 0 {
-			bits[i] = reverseBits(uint(depth[i]), next_code[depth[i]])
-			next_code[depth[i]]++
+			bits[i] = reverseBits(uint(depth[i]), nextCode[depth[i]])
+			nextCode[depth[i]]++
 		}
 	}
 }

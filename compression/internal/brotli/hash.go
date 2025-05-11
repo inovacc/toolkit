@@ -182,7 +182,7 @@ func searchInStaticDictionary(dictionary *encoderDictionary, handle hasherHandle
 		if i >= tmp {
 			break
 		}
-		var item uint = uint(dictionary.hash_table[key])
+		var item uint = uint(dictionary.hashTable[key])
 		self.dict_num_lookups++
 		if item != 0 {
 			var item_matches bool = testStaticDictionaryItem(dictionary, item, data, max_length, max_backward, max_distance, out)

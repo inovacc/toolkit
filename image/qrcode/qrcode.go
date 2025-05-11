@@ -3,6 +3,8 @@ package qrcode
 import (
 	"image"
 	"io"
+
+	"github.com/skip2/go-qrcode"
 )
 
 type Qrcode struct {

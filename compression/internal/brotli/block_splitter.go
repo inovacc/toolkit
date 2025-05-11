@@ -9,12 +9,12 @@ package brotli
 /* Block split point selection utilities. */
 
 type blockSplit struct {
-	num_types          uint
-	num_blocks         uint
-	types              []byte
-	lengths            []uint32
-	types_alloc_size   uint
-	lengths_alloc_size uint
+	numTypes         uint
+	numBlocks        uint
+	types            []byte
+	lengths          []uint32
+	typesAllocSize   uint
+	lengthsAllocSize uint
 }
 
 const (
@@ -34,35 +34,35 @@ const (
 )
 
 func countLiterals(cmds []command) uint {
-	var total_length uint = 0
+	var totalLength uint = 0
 	/* Count how many we have. */
 
 	for i := range cmds {
-		total_length += uint(cmds[i].insert_len_)
+		totalLength += uint(cmds[i].insert_len_)
 	}
 
-	return total_length
+	return totalLength
 }
 
 func copyLiteralsToByteArray(cmds []command, data []byte, offset uint, mask uint, literals []byte) {
 	var pos uint = 0
-	var from_pos uint = offset & mask
+	var fromPos uint = offset & mask
 	for i := range cmds {
-		var insert_len uint = uint(cmds[i].insert_len_)
-		if from_pos+insert_len > mask {
-			var head_size uint = mask + 1 - from_pos
-			copy(literals[pos:], data[from_pos:][:head_size])
-			from_pos = 0
-			pos += head_size
-			insert_len -= head_size
+		var insertLen uint = uint(cmds[i].insert_len_)
+		if fromPos+insertLen > mask {
+			var headSize uint = mask + 1 - fromPos
+			copy(literals[pos:], data[fromPos:][:headSize])
+			fromPos = 0
+			pos += headSize
+			insertLen -= headSize
 		}
 
-		if insert_len > 0 {
-			copy(literals[pos:], data[from_pos:][:insert_len])
-			pos += insert_len
+		if insertLen > 0 {
+			copy(literals[pos:], data[fromPos:][:insertLen])
+			pos += insertLen
 		}
 
-		from_pos = uint((uint32(from_pos+insert_len) + commandCopyLen(&cmds[i])) & uint32(mask))
+		fromPos = uint((uint32(fromPos+insertLen) + commandCopyLen(&cmds[i])) & uint32(mask))
 	}
 }
 
@@ -86,59 +86,59 @@ const histogramsPerBatch = 64
 const clustersPerBatch = 16
 
 func initBlockSplit(self *blockSplit) {
-	self.num_types = 0
-	self.num_blocks = 0
+	self.numTypes = 0
+	self.numBlocks = 0
 	self.types = self.types[:0]
 	self.lengths = self.lengths[:0]
-	self.types_alloc_size = 0
-	self.lengths_alloc_size = 0
+	self.typesAllocSize = 0
+	self.lengthsAllocSize = 0
 }
 
-func splitBlock(cmds []command, data []byte, pos uint, mask uint, params *encoderParams, literal_split *blockSplit, insert_and_copy_split *blockSplit, dist_split *blockSplit) {
+func splitBlock(cmds []command, data []byte, pos uint, mask uint, params *encoderParams, literalSplit *blockSplit, insertAndCopySplit *blockSplit, distSplit *blockSplit) {
 	{
-		var literals_count uint = countLiterals(cmds)
-		var literals []byte = make([]byte, literals_count)
+		var literalsCount uint = countLiterals(cmds)
+		var literals []byte = make([]byte, literalsCount)
 
 		/* Create a continuous array of literals. */
 		copyLiteralsToByteArray(cmds, data, pos, mask, literals)
 
 		/* Create the block split on the array of literals.
 		   Literal histograms have alphabet size 256. */
-		splitByteVectorLiteral(literals, literals_count, kSymbolsPerLiteralHistogram, kMaxLiteralHistograms, kLiteralStrideLength, kLiteralBlockSwitchCost, params, literal_split)
+		splitByteVectorLiteral(literals, literalsCount, kSymbolsPerLiteralHistogram, kMaxLiteralHistograms, kLiteralStrideLength, kLiteralBlockSwitchCost, params, literalSplit)
 
 		literals = nil
 	}
 	{
-		var insert_and_copy_codes []uint16 = make([]uint16, len(cmds))
+		var insertAndCopyCodes []uint16 = make([]uint16, len(cmds))
 		/* Compute prefix codes for commands. */
 
 		for i := range cmds {
-			insert_and_copy_codes[i] = cmds[i].cmd_prefix_
+			insertAndCopyCodes[i] = cmds[i].cmd_prefix_
 		}
 
 		/* Create the block split on the array of command prefixes. */
-		splitByteVectorCommand(insert_and_copy_codes, kSymbolsPerCommandHistogram, kMaxCommandHistograms, kCommandStrideLength, kCommandBlockSwitchCost, params, insert_and_copy_split)
+		splitByteVectorCommand(insertAndCopyCodes, kSymbolsPerCommandHistogram, kMaxCommandHistograms, kCommandStrideLength, kCommandBlockSwitchCost, params, insertAndCopySplit)
 
 		/* TODO: reuse for distances? */
 
-		insert_and_copy_codes = nil
+		insertAndCopyCodes = nil
 	}
 	{
-		var distance_prefixes []uint16 = make([]uint16, len(cmds))
+		var distancePrefixes []uint16 = make([]uint16, len(cmds))
 		var j uint = 0
 		/* Create a continuous array of distance prefixes. */
 
 		for i := range cmds {
 			var cmd *command = &cmds[i]
 			if commandCopyLen(cmd) != 0 && cmd.cmd_prefix_ >= 128 {
-				distance_prefixes[j] = cmd.dist_prefix_ & 0x3FF
+				distancePrefixes[j] = cmd.dist_prefix_ & 0x3FF
 				j++
 			}
 		}
 
 		/* Create the block split on the array of distance prefixes. */
-		splitByteVectorDistance(distance_prefixes, j, kSymbolsPerDistanceHistogram, kMaxCommandHistograms, kCommandStrideLength, kDistanceBlockSwitchCost, params, dist_split)
+		splitByteVectorDistance(distancePrefixes, j, kSymbolsPerDistanceHistogram, kMaxCommandHistograms, kCommandStrideLength, kDistanceBlockSwitchCost, params, distSplit)
 
-		distance_prefixes = nil
+		distancePrefixes = nil
 	}
 }

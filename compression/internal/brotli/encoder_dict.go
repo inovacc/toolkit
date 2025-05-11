@@ -5,17 +5,17 @@ type encoderDictionary struct {
 	words                 *dictionary
 	cutoffTransformsCount uint32
 	cutoffTransforms      uint64
-	hash_table            []uint16
+	hashTable             []uint16
 	buckets               []uint16
-	dict_words            []dictWord
+	dictWords             []dictWord
 }
 
 func initEncoderDictionary(dict *encoderDictionary) {
 	dict.words = getDictionary()
 
-	dict.hash_table = kStaticDictionaryHash[:]
+	dict.hashTable = kStaticDictionaryHash[:]
 	dict.buckets = kStaticDictionaryBuckets[:]
-	dict.dict_words = kStaticDictionaryWords[:]
+	dict.dictWords = kStaticDictionaryWords[:]
 
 	dict.cutoffTransformsCount = kCutoffTransformsCount
 	dict.cutoffTransforms = kCutoffTransforms

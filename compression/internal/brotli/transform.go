@@ -30,13 +30,13 @@ const (
 const transformsMaxCutOff = transformOmitLast9
 
 type transforms struct {
-	prefix_suffix_size uint16
-	prefix_suffix      []byte
-	prefix_suffix_map  []uint16
-	num_transforms     uint32
-	transforms         []byte
-	params             []byte
-	cutOffTransforms   [transformsMaxCutOff + 1]int16
+	prefixSuffixSize uint16
+	prefixSuffix     []byte
+	prefixSuffixMap  []uint16
+	numTransforms    uint32
+	transforms       []byte
+	params           []byte
+	cutOffTransforms [transformsMaxCutOff + 1]int16
 }
 
 func transformPrefixId(t *transforms, I int) byte {
@@ -52,11 +52,11 @@ func transformSuffixId(t *transforms, I int) byte {
 }
 
 func transformPrefix(t *transforms, I int) []byte {
-	return t.prefix_suffix[t.prefix_suffix_map[transformPrefixId(t, I)]:]
+	return t.prefixSuffix[t.prefixSuffixMap[transformPrefixId(t, I)]:]
 }
 
 func transformSuffix(t *transforms, I int) []byte {
-	return t.prefix_suffix[t.prefix_suffix_map[transformSuffixId(t, I)]:]
+	return t.prefixSuffix[t.prefixSuffixMap[transformSuffixId(t, I)]:]
 }
 
 /* RFC 7932 transforms string data */
@@ -517,7 +517,7 @@ func toUpperCase(p []byte) int {
 	return 3
 }
 
-func shiftTransform(word []byte, word_len int, parameter uint16) int {
+func shiftTransform(word []byte, wordLen int, parameter uint16) int {
 	/* Limited sign extension: scalar < (1 << 24). */
 	var scalar uint32 = (uint32(parameter) & 0x7FFF) + (0x1000000 - (uint32(parameter) & 0x8000))
 	if word[0] < 0x80 {
@@ -531,7 +531,7 @@ func shiftTransform(word []byte, word_len int, parameter uint16) int {
 		return 1
 	} else if word[0] < 0xE0 {
 		/* 2-byte rune / 110sssss AAssssss / 11 bit scalar. */
-		if word_len < 2 {
+		if wordLen < 2 {
 			return 1
 		}
 		scalar += uint32(word[1]&0x3F | (word[0]&0x1F)<<6)
@@ -540,8 +540,8 @@ func shiftTransform(word []byte, word_len int, parameter uint16) int {
 		return 2
 	} else if word[0] < 0xF0 {
 		/* 3-byte rune / 1110ssss AAssssss BBssssss / 16 bit scalar. */
-		if word_len < 3 {
-			return word_len
+		if wordLen < 3 {
+			return wordLen
 		}
 		scalar += uint32(word[2])&0x3F | uint32(word[1]&0x3F)<<6 | uint32(word[0]&0x0F)<<12
 		word[0] = byte(0xE0 | (scalar>>12)&0x0F)
@@ -550,8 +550,8 @@ func shiftTransform(word []byte, word_len int, parameter uint16) int {
 		return 3
 	} else if word[0] < 0xF8 {
 		/* 4-byte rune / 11110sss AAssssss BBssssss CCssssss / 21 bit scalar. */
-		if word_len < 4 {
-			return word_len
+		if wordLen < 4 {
+			return wordLen
 		}
 		scalar += uint32(word[3])&0x3F | uint32(word[2]&0x3F)<<6 | uint32(word[1]&0x3F)<<12 | uint32(word[0]&0x07)<<18
 		word[0] = byte(0xF0 | (scalar>>18)&0x07)
@@ -564,17 +564,17 @@ func shiftTransform(word []byte, word_len int, parameter uint16) int {
 	return 1
 }
 
-func transformDictionaryWord(dst []byte, word []byte, len int, trans *transforms, transform_idx int) int {
+func transformDictionaryWord(dst []byte, word []byte, len int, trans *transforms, transformIdx int) int {
 	var idx int = 0
-	var prefix []byte = transformPrefix(trans, transform_idx)
-	var type_ byte = transformType(trans, transform_idx)
-	var suffix []byte = transformSuffix(trans, transform_idx)
+	var prefix []byte = transformPrefix(trans, transformIdx)
+	var type_ byte = transformType(trans, transformIdx)
+	var suffix []byte = transformSuffix(trans, transformIdx)
 	{
-		var prefix_len int = int(prefix[0])
+		var prefixLen int = int(prefix[0])
 		prefix = prefix[1:]
 		for {
-			tmp1 := prefix_len
-			prefix_len--
+			tmp1 := prefixLen
+			prefixLen--
 			if tmp1 == 0 {
 				break
 			}
@@ -610,10 +610,10 @@ func transformDictionaryWord(dst []byte, word []byte, len int, trans *transforms
 				len -= step
 			}
 		} else if t == transformShiftFirst {
-			var param uint16 = uint16(trans.params[transform_idx*2]) + uint16(trans.params[transform_idx*2+1])<<8
+			var param uint16 = uint16(trans.params[transformIdx*2]) + uint16(trans.params[transformIdx*2+1])<<8
 			shiftTransform(dst[idx-len:], int(len), param)
 		} else if t == transformShiftAll {
-			var param uint16 = uint16(trans.params[transform_idx*2]) + uint16(trans.params[transform_idx*2+1])<<8
+			var param uint16 = uint16(trans.params[transformIdx*2]) + uint16(trans.params[transformIdx*2+1])<<8
 			var shift []byte = dst
 			shift = shift[idx-len:]
 			for len > 0 {
@@ -624,11 +624,11 @@ func transformDictionaryWord(dst []byte, word []byte, len int, trans *transforms
 		}
 	}
 	{
-		var suffix_len int = int(suffix[0])
+		var suffixLen int = int(suffix[0])
 		suffix = suffix[1:]
 		for {
-			tmp2 := suffix_len
-			suffix_len--
+			tmp2 := suffixLen
+			suffixLen--
 			if tmp2 == 0 {
 				break
 			}

@@ -66,16 +66,16 @@ func maxZopfliCandidates(params *encoderParams) uint {
 }
 
 func sanitizeParams(params *encoderParams) {
-	params.quality = brotli_min_int(maxQuality, brotli_max_int(minQuality, params.quality))
+	params.quality = brotliMinInt(maxQuality, brotliMaxInt(minQuality, params.quality))
 	if params.quality <= maxQualityForStaticEntropyCodes {
-		params.large_window = false
+		params.largeWindow = false
 	}
 
 	if params.lgwin < minWindowBits {
 		params.lgwin = minWindowBits
 	} else {
 		var max_lgwin int
-		if params.large_window {
+		if params.largeWindow {
 			max_lgwin = largeMaxWindowBits
 		} else {
 			max_lgwin = maxWindowBits
@@ -96,10 +96,10 @@ func computeLgBlock(params *encoderParams) int {
 	} else if lgblock == 0 {
 		lgblock = 16
 		if params.quality >= 9 && params.lgwin > uint(lgblock) {
-			lgblock = brotli_min_int(18, int(params.lgwin))
+			lgblock = brotliMinInt(18, int(params.lgwin))
 		}
 	} else {
-		lgblock = brotli_min_int(maxInputBlockBits, brotli_max_int(minInputBlockBits, lgblock))
+		lgblock = brotliMinInt(maxInputBlockBits, brotliMaxInt(minInputBlockBits, lgblock))
 	}
 
 	return lgblock
@@ -114,11 +114,11 @@ Returns log2 of the size of main ring buffer area.
 	smaller than ring-buffer size.
 */
 func computeRbBits(params *encoderParams) int {
-	return 1 + brotli_max_int(int(params.lgwin), params.lgblock)
+	return 1 + brotliMaxInt(int(params.lgwin), params.lgblock)
 }
 
 func maxMetablockSize(params *encoderParams) uint {
-	var bits int = brotli_min_int(computeRbBits(params), maxInputBlockBits)
+	var bits int = brotliMinInt(computeRbBits(params), maxInputBlockBits)
 	return uint(1) << uint(bits)
 }
 
@@ -142,7 +142,7 @@ func literalSpreeLengthForSparseSearch(params *encoderParams) uint {
 func chooseHasher(params *encoderParams, hparams *hasherParams) {
 	if params.quality > 9 {
 		hparams.type_ = 10
-	} else if params.quality == 4 && params.size_hint >= 1<<20 {
+	} else if params.quality == 4 && params.sizeHint >= 1<<20 {
 		hparams.type_ = 54
 	} else if params.quality < 5 {
 		hparams.type_ = params.quality
@@ -154,32 +154,32 @@ func chooseHasher(params *encoderParams, hparams *hasherParams) {
 		} else {
 			hparams.type_ = 42
 		}
-	} else if params.size_hint >= 1<<20 && params.lgwin >= 19 {
+	} else if params.sizeHint >= 1<<20 && params.lgwin >= 19 {
 		hparams.type_ = 6
-		hparams.block_bits = params.quality - 1
-		hparams.bucket_bits = 15
-		hparams.hash_len = 5
+		hparams.blockBits = params.quality - 1
+		hparams.bucketBits = 15
+		hparams.hashLen = 5
 		if params.quality < 7 {
-			hparams.num_last_distances_to_check = 4
+			hparams.numLastDistancesToCheck = 4
 		} else if params.quality < 9 {
-			hparams.num_last_distances_to_check = 10
+			hparams.numLastDistancesToCheck = 10
 		} else {
-			hparams.num_last_distances_to_check = 16
+			hparams.numLastDistancesToCheck = 16
 		}
 	} else {
 		hparams.type_ = 5
-		hparams.block_bits = params.quality - 1
+		hparams.blockBits = params.quality - 1
 		if params.quality < 7 {
-			hparams.bucket_bits = 14
+			hparams.bucketBits = 14
 		} else {
-			hparams.bucket_bits = 15
+			hparams.bucketBits = 15
 		}
 		if params.quality < 7 {
-			hparams.num_last_distances_to_check = 4
+			hparams.numLastDistancesToCheck = 4
 		} else if params.quality < 9 {
-			hparams.num_last_distances_to_check = 10
+			hparams.numLastDistancesToCheck = 10
 		} else {
-			hparams.num_last_distances_to_check = 16
+			hparams.numLastDistancesToCheck = 16
 		}
 	}
 

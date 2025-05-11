@@ -27,7 +27,7 @@ HashBytes is the function that chooses the bucket to place
 	classes have separate, different implementations of hashing.
 */
 func (h *hashLongestMatchQuickly) HashBytes(data []byte) uint32 {
-	var hash uint64 = ((binary.LittleEndian.Uint64(data) << (64 - 8*h.hashLen)) * kHashMul64)
+	var hash uint64 = (binary.LittleEndian.Uint64(data) << (64 - 8*h.hashLen)) * kHashMul64
 
 	/* The higher bits contain more mixture from the multiplication,
 	   so we take our results from there. */
@@ -57,12 +57,12 @@ func (h *hashLongestMatchQuickly) Initialize(params *encoderParams) {
 	h.buckets = make([]uint32, 1<<h.bucketBits+h.bucketSweep)
 }
 
-func (h *hashLongestMatchQuickly) Prepare(one_shot bool, input_size uint, data []byte) {
-	var partial_prepare_threshold uint = (4 << h.bucketBits) >> 7
+func (h *hashLongestMatchQuickly) Prepare(oneShot bool, inputSize uint, data []byte) {
+	var partialPrepareThreshold uint = (4 << h.bucketBits) >> 7
 	/* Partial preparation is 100 times slower (per socket). */
-	if one_shot && input_size <= partial_prepare_threshold {
+	if oneShot && inputSize <= partialPrepareThreshold {
 		var i uint
-		for i = 0; i < input_size; i++ {
+		for i = 0; i < inputSize; i++ {
 			var key uint32 = h.HashBytes(data[i:])
 			for j := 0; j < h.bucketSweep; j++ {
 				h.buckets[key+uint32(j)] = 0
@@ -99,14 +99,14 @@ func (h *hashLongestMatchQuickly) StoreRange(data []byte, mask uint, ix_start ui
 	}
 }
 
-func (h *hashLongestMatchQuickly) StitchToPreviousBlock(num_bytes uint, position uint, ringbuffer []byte, ringbuffer_mask uint) {
-	if num_bytes >= h.HashTypeLength()-1 && position >= 3 {
+func (h *hashLongestMatchQuickly) StitchToPreviousBlock(numBytes uint, position uint, ringbuffer []byte, ringbufferMask uint) {
+	if numBytes >= h.HashTypeLength()-1 && position >= 3 {
 		/* Prepare the hashes for three last bytes of the last write.
 		   These could not be calculated before, since they require knowledge
 		   of both the previous and the current block. */
-		h.Store(ringbuffer, ringbuffer_mask, position-3)
-		h.Store(ringbuffer, ringbuffer_mask, position-2)
-		h.Store(ringbuffer, ringbuffer_mask, position-1)
+		h.Store(ringbuffer, ringbufferMask, position-3)
+		h.Store(ringbuffer, ringbufferMask, position-2)
+		h.Store(ringbuffer, ringbufferMask, position-1)
 	}
 }
 
@@ -124,33 +124,33 @@ Find a longest backward match of &data[cur_ix & ring_buffer_mask]
 	Writes the best match into |out|.
 	|out|->score is updated only if a better match is found.
 */
-func (h *hashLongestMatchQuickly) FindLongestMatch(dictionary *encoderDictionary, data []byte, ring_buffer_mask uint, distance_cache []int, cur_ix uint, max_length uint, max_backward uint, gap uint, max_distance uint, out *hasherSearchResult) {
-	var best_len_in uint = out.len
-	var cur_ix_masked uint = cur_ix & ring_buffer_mask
-	var key uint32 = h.HashBytes(data[cur_ix_masked:])
-	var compare_char int = int(data[cur_ix_masked+best_len_in])
-	var min_score uint = out.score
-	var best_score uint = out.score
-	var best_len uint = best_len_in
-	var cached_backward uint = uint(distance_cache[0])
-	var prev_ix uint = cur_ix - cached_backward
+func (h *hashLongestMatchQuickly) FindLongestMatch(dictionary *encoderDictionary, data []byte, ringBufferMask uint, distanceCache []int, curIx uint, maxLength uint, maxBackward uint, gap uint, maxDistance uint, out *hasherSearchResult) {
+	var bestLenIn uint = out.len
+	var curIxMasked uint = curIx & ringBufferMask
+	var key uint32 = h.HashBytes(data[curIxMasked:])
+	var compareChar int = int(data[curIxMasked+bestLenIn])
+	var minScore uint = out.score
+	var bestScore uint = out.score
+	var bestLen uint = bestLenIn
+	var cachedBackward uint = uint(distanceCache[0])
+	var prevIx uint = curIx - cachedBackward
 	var bucket []uint32
 	out.len_code_delta = 0
-	if prev_ix < cur_ix {
-		prev_ix &= uint(uint32(ring_buffer_mask))
-		if compare_char == int(data[prev_ix+best_len]) {
-			var len uint = findMatchLengthWithLimit(data[prev_ix:], data[cur_ix_masked:], max_length)
-			if len >= 4 {
-				var score uint = backwardReferenceScoreUsingLastDistance(uint(len))
-				if best_score < score {
-					best_score = score
-					best_len = uint(len)
-					out.len = uint(len)
-					out.distance = cached_backward
-					out.score = best_score
-					compare_char = int(data[cur_ix_masked+best_len])
+	if prevIx < curIx {
+		prevIx &= uint(uint32(ringBufferMask))
+		if compareChar == int(data[prevIx+bestLen]) {
+			var limit uint = findMatchLengthWithLimit(data[prevIx:], data[curIxMasked:], maxLength)
+			if limit >= 4 {
+				var score uint = backwardReferenceScoreUsingLastDistance(uint(limit))
+				if bestScore < score {
+					bestScore = score
+					bestLen = uint(limit)
+					out.len = uint(limit)
+					out.distance = cachedBackward
+					out.score = bestScore
+					compareChar = int(data[curIxMasked+bestLen])
 					if h.bucketSweep == 1 {
-						h.buckets[key] = uint32(cur_ix)
+						h.buckets[key] = uint32(curIx)
 						return
 					}
 				}
@@ -160,27 +160,27 @@ func (h *hashLongestMatchQuickly) FindLongestMatch(dictionary *encoderDictionary
 
 	if h.bucketSweep == 1 {
 		var backward uint
-		var len uint
+		var l uint
 
 		/* Only one to look for, don't bother to prepare for a loop. */
-		prev_ix = uint(h.buckets[key])
+		prevIx = uint(h.buckets[key])
 
-		h.buckets[key] = uint32(cur_ix)
-		backward = cur_ix - prev_ix
-		prev_ix &= uint(uint32(ring_buffer_mask))
-		if compare_char != int(data[prev_ix+best_len_in]) {
+		h.buckets[key] = uint32(curIx)
+		backward = curIx - prevIx
+		prevIx &= uint(uint32(ringBufferMask))
+		if compareChar != int(data[prevIx+bestLenIn]) {
 			return
 		}
 
-		if backward == 0 || backward > max_backward {
+		if backward == 0 || backward > maxBackward {
 			return
 		}
 
-		len = findMatchLengthWithLimit(data[prev_ix:], data[cur_ix_masked:], max_length)
-		if len >= 4 {
-			var score uint = backwardReferenceScore(uint(len), backward)
-			if best_score < score {
-				out.len = uint(len)
+		l = findMatchLengthWithLimit(data[prevIx:], data[curIxMasked:], maxLength)
+		if l >= 4 {
+			var score uint = backwardReferenceScore(uint(l), backward)
+			if bestScore < score {
+				out.len = uint(l)
 				out.distance = backward
 				out.score = score
 				return
@@ -189,38 +189,38 @@ func (h *hashLongestMatchQuickly) FindLongestMatch(dictionary *encoderDictionary
 	} else {
 		bucket = h.buckets[key:]
 		var i int
-		prev_ix = uint(bucket[0])
+		prevIx = uint(bucket[0])
 		bucket = bucket[1:]
-		for i = 0; i < h.bucketSweep; (func() { i++; tmp3 := bucket; bucket = bucket[1:]; prev_ix = uint(tmp3[0]) })() {
-			var backward uint = cur_ix - prev_ix
-			var len uint
-			prev_ix &= uint(uint32(ring_buffer_mask))
-			if compare_char != int(data[prev_ix+best_len]) {
+		for i = 0; i < h.bucketSweep; (func() { i++; tmp3 := bucket; bucket = bucket[1:]; prevIx = uint(tmp3[0]) })() {
+			var backward uint = curIx - prevIx
+			var l uint
+			prevIx &= uint(uint32(ringBufferMask))
+			if compareChar != int(data[prevIx+bestLen]) {
 				continue
 			}
 
-			if backward == 0 || backward > max_backward {
+			if backward == 0 || backward > maxBackward {
 				continue
 			}
 
-			len = findMatchLengthWithLimit(data[prev_ix:], data[cur_ix_masked:], max_length)
-			if len >= 4 {
-				var score uint = backwardReferenceScore(uint(len), backward)
-				if best_score < score {
-					best_score = score
-					best_len = uint(len)
-					out.len = best_len
+			l = findMatchLengthWithLimit(data[prevIx:], data[curIxMasked:], maxLength)
+			if l >= 4 {
+				var score uint = backwardReferenceScore(uint(l), backward)
+				if bestScore < score {
+					bestScore = score
+					bestLen = uint(l)
+					out.len = bestLen
 					out.distance = backward
 					out.score = score
-					compare_char = int(data[cur_ix_masked+best_len])
+					compareChar = int(data[curIxMasked+bestLen])
 				}
 			}
 		}
 	}
 
-	if h.useDictionary && min_score == out.score {
-		searchInStaticDictionary(dictionary, h, data[cur_ix_masked:], max_length, max_backward+gap, max_distance, out, true)
+	if h.useDictionary && minScore == out.score {
+		searchInStaticDictionary(dictionary, h, data[curIxMasked:], maxLength, maxBackward+gap, maxDistance, out, true)
 	}
 
-	h.buckets[key+uint32((cur_ix>>3)%uint(h.bucketSweep))] = uint32(cur_ix)
+	h.buckets[key+uint32((curIx>>3)%uint(h.bucketSweep))] = uint32(curIx)
 }

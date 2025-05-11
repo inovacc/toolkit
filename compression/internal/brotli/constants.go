@@ -19,16 +19,16 @@ const numCommandSymbols = 704
 
 const numBlockLenSymbols = 26
 
-const maxContextMapSymbols = (maxNumberOfBlockTypes + contextMapMaxRle)
+const maxContextMapSymbols = maxNumberOfBlockTypes + contextMapMaxRle
 
-const maxBlockTypeSymbols = (maxNumberOfBlockTypes + 2)
+const maxBlockTypeSymbols = maxNumberOfBlockTypes + 2
 
 /* Specification: 3.5. Complex prefix codes */
 const repeatPreviousCodeLength = 16
 
 const repeatZeroCodeLength = 17
 
-const codeLengthCodes = (repeatZeroCodeLength + 1)
+const codeLengthCodes = repeatZeroCodeLength + 1
 
 /* "code length of 8 is repeated" */
 const initialRepeatedCodeLength = 8
@@ -56,7 +56,7 @@ func distanceAlphabetSize(NPOSTFIX uint, NDIRECT uint, MAXNBITS uint) uint {
 /* numDistanceSymbols == 1128 */
 const numDistanceSymbols = 1128
 
-const maxDistance = 0x3FFFFFC
+const maxDistanceConst = 0x3FFFFFC
 
 const maxAllowedDistance = 0x7FFFFFFC
 
@@ -72,6 +72,6 @@ const distanceContextBits = 2
    with BROTLI_NUM_DISTANCE_SHORT_CODES. */
 const windowGap = 16
 
-func maxBackwardLimit(W uint) uint {
+func maxBackwardLimitFn(W uint) uint {
 	return (uint(1) << W) - windowGap
 }

@@ -79,7 +79,7 @@ Stores the hash of the next 4 bytes and in a single tree-traversal, the
 */
 func storeAndFindMatchesH10(self *h10, data []byte, cur_ix uint, ring_buffer_mask uint, max_length uint, max_backward uint, best_len *uint, matches []backwardMatch) []backwardMatch {
 	var cur_ix_masked uint = cur_ix & ring_buffer_mask
-	var max_comp_len uint = brotli_min_size_t(max_length, 128)
+	var max_comp_len uint = brotliMinSizeT(max_length, 128)
 	var should_reroot_tree bool = (max_length >= 128)
 	var key uint32 = hashBytesH10(data[cur_ix_masked:])
 	var forest []uint32 = self.forest
@@ -116,7 +116,7 @@ func storeAndFindMatchesH10(self *h10, data []byte, cur_ix uint, ring_buffer_mas
 			break
 		}
 		{
-			var cur_len uint = brotli_min_size_t(best_len_left, best_len_right)
+			var cur_len uint = brotliMinSizeT(best_len_left, best_len_right)
 			var len uint
 			assert(cur_len <= 128)
 			len = cur_len + findMatchLengthWithLimit(data[cur_ix_masked+cur_len:], data[prev_ix_masked+cur_len:], max_length-cur_len)
@@ -213,15 +213,15 @@ func findAllMatchesH10(handle *h10, dictionary *encoderDictionary, data []byte, 
 		dict_matches[i] = kInvalidMatch
 	}
 	{
-		var minlen uint = brotli_max_size_t(4, best_len+1)
+		var minlen uint = brotliMaxSizeT(4, best_len+1)
 		if findAllStaticDictionaryMatches(dictionary, data[cur_ix_masked:], minlen, max_length, dict_matches[0:]) {
-			var maxlen uint = brotli_min_size_t(maxStaticDictionaryMatchLen, max_length)
+			var maxlen uint = brotliMinSizeT(maxStaticDictionaryMatchLen, max_length)
 			var l uint
 			for l = minlen; l <= maxlen; l++ {
 				var dict_id uint32 = dict_matches[l]
 				if dict_id < kInvalidMatch {
 					var distance uint = max_backward + gap + uint(dict_id>>5) + 1
-					if distance <= params.dist.max_distance {
+					if distance <= params.dist.maxDistance {
 						initDictionaryBackwardMatch(&matches[0], distance, l, uint(dict_id&31))
 						matches = matches[1:]
 					}
@@ -266,7 +266,7 @@ func (h *h10) StoreRange(data []byte, mask uint, ix_start uint, ix_end uint) {
 func (h *h10) StitchToPreviousBlock(num_bytes uint, position uint, ringbuffer []byte, ringbuffer_mask uint) {
 	if num_bytes >= h.HashTypeLength()-1 && position >= 128 {
 		var i_start uint = position - 128 + 1
-		var i_end uint = brotli_min_size_t(position, i_start+num_bytes)
+		var i_end uint = brotliMinSizeT(position, i_start+num_bytes)
 		/* Store the last `128 - 1` positions in the hasher.
 		   These could not be calculated before, since they require knowledge
 		   of both the previous and the current block. */
@@ -277,7 +277,7 @@ func (h *h10) StitchToPreviousBlock(num_bytes uint, position uint, ringbuffer []
 			   Furthermore, we have to make sure that we don't look further back
 			   from the start of the next block than the window size, otherwise we
 			   could access already overwritten areas of the ring-buffer. */
-			var max_backward uint = h.window_mask_ - brotli_max_size_t(windowGap-1, position-i)
+			var max_backward uint = h.window_mask_ - brotliMaxSizeT(windowGap-1, position-i)
 
 			/* We know that i + 128 <= position + num_bytes, i.e. the
 			   end of the current block and that we have at least

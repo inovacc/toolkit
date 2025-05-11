@@ -10,9 +10,9 @@ package brotli
 func shannonEntropy(population []uint32, size uint, total *uint) float64 {
 	var sum uint = 0
 	var retval float64 = 0
-	var population_end []uint32 = population[size:]
+	var populationEnd []uint32 = population[size:]
 	var p uint
-	for -cap(population) < -cap(population_end) {
+	for -cap(population) < -cap(populationEnd) {
 		p = uint(population[0])
 		population = population[1:]
 		sum += p
@@ -43,16 +43,16 @@ const kThreeSymbolHistogramCost float64 = 28
 const kFourSymbolHistogramCost float64 = 37
 
 func populationCostLiteral(histogram *histogramLiteral) float64 {
-	var data_size uint = histogramDataSizeLiteral()
+	var dataSize uint = histogramDataSizeLiteral()
 	var count int = 0
 	var s [5]uint
 	var bits float64 = 0.0
 	var i uint
-	if histogram.total_count_ == 0 {
+	if histogram.totalCount == 0 {
 		return kOneSymbolHistogramCost
 	}
 
-	for i = 0; i < data_size; i++ {
+	for i = 0; i < dataSize; i++ {
 		if histogram.data_[i] > 0 {
 			s[count] = i
 			count++
@@ -67,14 +67,14 @@ func populationCostLiteral(histogram *histogramLiteral) float64 {
 	}
 
 	if count == 2 {
-		return kTwoSymbolHistogramCost + float64(histogram.total_count_)
+		return kTwoSymbolHistogramCost + float64(histogram.totalCount)
 	}
 
 	if count == 3 {
 		var histo0 uint32 = histogram.data_[s[0]]
 		var histo1 uint32 = histogram.data_[s[1]]
 		var histo2 uint32 = histogram.data_[s[2]]
-		var histomax uint32 = brotli_max_uint32_t(histo0, brotli_max_uint32_t(histo1, histo2))
+		var histomax uint32 = brotliMaxUint32T(histo0, brotliMaxUint32T(histo1, histo2))
 		return kThreeSymbolHistogramCost + 2*(float64(histo0)+float64(histo1)+float64(histo2)) - float64(histomax)
 	}
 
@@ -99,18 +99,18 @@ func populationCostLiteral(histogram *histogramLiteral) float64 {
 		}
 
 		h23 = histo[2] + histo[3]
-		histomax = brotli_max_uint32_t(h23, histo[0])
+		histomax = brotliMaxUint32T(h23, histo[0])
 		return kFourSymbolHistogramCost + 3*float64(h23) + 2*(float64(histo[0])+float64(histo[1])) - float64(histomax)
 	}
 	{
-		var max_depth uint = 1
-		var depth_histo = [codeLengthCodes]uint32{0}
+		var maxDepth uint = 1
+		var depthHisto = [codeLengthCodes]uint32{0}
 		/* In this loop we compute the entropy of the histogram and simultaneously
 		   build a simplified histogram of the code length codes where we use the
 		   zero repeat code 17, but we don't use the non-zero repeat code 16. */
 
-		var log2total float64 = fastLog2(histogram.total_count_)
-		for i = 0; i < data_size; {
+		var log2total float64 = fastLog2(histogram.totalCount)
+		for i = 0; i < dataSize; {
 			if histogram.data_[i] > 0 {
 				var log2p float64 = log2total - fastLog2(uint(histogram.data_[i]))
 				/* Compute -log2(P(symbol)) = -log2(count(symbol)/total_count) =
@@ -124,11 +124,11 @@ func populationCostLiteral(histogram *histogramLiteral) float64 {
 					depth = 15
 				}
 
-				if depth > max_depth {
-					max_depth = depth
+				if depth > maxDepth {
+					maxDepth = depth
 				}
 
-				depth_histo[depth]++
+				depthHisto[depth]++
 				i++
 			} else {
 				var reps uint32 = 1
@@ -136,23 +136,23 @@ func populationCostLiteral(histogram *histogramLiteral) float64 {
 				   and 17 code length codes to the code length code histogram. */
 
 				var k uint
-				for k = i + 1; k < data_size && histogram.data_[k] == 0; k++ {
+				for k = i + 1; k < dataSize && histogram.data_[k] == 0; k++ {
 					reps++
 				}
 
 				i += uint(reps)
-				if i == data_size {
+				if i == dataSize {
 					/* Don't add any cost for the last zero run, since these are encoded
 					   only implicitly. */
 					break
 				}
 
 				if reps < 3 {
-					depth_histo[0] += reps
+					depthHisto[0] += reps
 				} else {
 					reps -= 2
 					for reps > 0 {
-						depth_histo[repeatZeroCodeLength]++
+						depthHisto[repeatZeroCodeLength]++
 
 						/* Add the 3 extra bits for the 17 code length code. */
 						bits += 3
@@ -164,26 +164,26 @@ func populationCostLiteral(histogram *histogramLiteral) float64 {
 		}
 
 		/* Add the estimated encoding cost of the code length code histogram. */
-		bits += float64(18 + 2*max_depth)
+		bits += float64(18 + 2*maxDepth)
 
 		/* Add the entropy of the code length code histogram. */
-		bits += bitsEntropy(depth_histo[:], codeLengthCodes)
+		bits += bitsEntropy(depthHisto[:], codeLengthCodes)
 	}
 
 	return bits
 }
 
 func populationCostCommand(histogram *histogramCommand) float64 {
-	var data_size uint = histogramDataSizeCommand()
+	var dataSize uint = histogramDataSizeCommand()
 	var count int = 0
 	var s [5]uint
 	var bits float64 = 0.0
 	var i uint
-	if histogram.total_count_ == 0 {
+	if histogram.totalCount == 0 {
 		return kOneSymbolHistogramCost
 	}
 
-	for i = 0; i < data_size; i++ {
+	for i = 0; i < dataSize; i++ {
 		if histogram.data_[i] > 0 {
 			s[count] = i
 			count++
@@ -198,14 +198,14 @@ func populationCostCommand(histogram *histogramCommand) float64 {
 	}
 
 	if count == 2 {
-		return kTwoSymbolHistogramCost + float64(histogram.total_count_)
+		return kTwoSymbolHistogramCost + float64(histogram.totalCount)
 	}
 
 	if count == 3 {
 		var histo0 uint32 = histogram.data_[s[0]]
 		var histo1 uint32 = histogram.data_[s[1]]
 		var histo2 uint32 = histogram.data_[s[2]]
-		var histomax uint32 = brotli_max_uint32_t(histo0, brotli_max_uint32_t(histo1, histo2))
+		var histomax uint32 = brotliMaxUint32T(histo0, brotliMaxUint32T(histo1, histo2))
 		return kThreeSymbolHistogramCost + 2*(float64(histo0)+float64(histo1)+float64(histo2)) - float64(histomax)
 	}
 
@@ -230,18 +230,18 @@ func populationCostCommand(histogram *histogramCommand) float64 {
 		}
 
 		h23 = histo[2] + histo[3]
-		histomax = brotli_max_uint32_t(h23, histo[0])
+		histomax = brotliMaxUint32T(h23, histo[0])
 		return kFourSymbolHistogramCost + 3*float64(h23) + 2*(float64(histo[0])+float64(histo[1])) - float64(histomax)
 	}
 	{
-		var max_depth uint = 1
-		var depth_histo = [codeLengthCodes]uint32{0}
+		var maxDepth uint = 1
+		var depthHisto = [codeLengthCodes]uint32{0}
 		/* In this loop we compute the entropy of the histogram and simultaneously
 		   build a simplified histogram of the code length codes where we use the
 		   zero repeat code 17, but we don't use the non-zero repeat code 16. */
 
-		var log2total float64 = fastLog2(histogram.total_count_)
-		for i = 0; i < data_size; {
+		var log2total float64 = fastLog2(histogram.totalCount)
+		for i = 0; i < dataSize; {
 			if histogram.data_[i] > 0 {
 				var log2p float64 = log2total - fastLog2(uint(histogram.data_[i]))
 				/* Compute -log2(P(symbol)) = -log2(count(symbol)/total_count) =
@@ -255,11 +255,11 @@ func populationCostCommand(histogram *histogramCommand) float64 {
 					depth = 15
 				}
 
-				if depth > max_depth {
-					max_depth = depth
+				if depth > maxDepth {
+					maxDepth = depth
 				}
 
-				depth_histo[depth]++
+				depthHisto[depth]++
 				i++
 			} else {
 				var reps uint32 = 1
@@ -267,23 +267,23 @@ func populationCostCommand(histogram *histogramCommand) float64 {
 				   and 17 code length codes to the code length code histogram. */
 
 				var k uint
-				for k = i + 1; k < data_size && histogram.data_[k] == 0; k++ {
+				for k = i + 1; k < dataSize && histogram.data_[k] == 0; k++ {
 					reps++
 				}
 
 				i += uint(reps)
-				if i == data_size {
+				if i == dataSize {
 					/* Don't add any cost for the last zero run, since these are encoded
 					   only implicitly. */
 					break
 				}
 
 				if reps < 3 {
-					depth_histo[0] += reps
+					depthHisto[0] += reps
 				} else {
 					reps -= 2
 					for reps > 0 {
-						depth_histo[repeatZeroCodeLength]++
+						depthHisto[repeatZeroCodeLength]++
 
 						/* Add the 3 extra bits for the 17 code length code. */
 						bits += 3
@@ -295,26 +295,26 @@ func populationCostCommand(histogram *histogramCommand) float64 {
 		}
 
 		/* Add the estimated encoding cost of the code length code histogram. */
-		bits += float64(18 + 2*max_depth)
+		bits += float64(18 + 2*maxDepth)
 
 		/* Add the entropy of the code length code histogram. */
-		bits += bitsEntropy(depth_histo[:], codeLengthCodes)
+		bits += bitsEntropy(depthHisto[:], codeLengthCodes)
 	}
 
 	return bits
 }
 
 func populationCostDistance(histogram *histogramDistance) float64 {
-	var data_size uint = histogramDataSizeDistance()
+	var dataSize uint = histogramDataSizeDistance()
 	var count int = 0
 	var s [5]uint
 	var bits float64 = 0.0
 	var i uint
-	if histogram.total_count_ == 0 {
+	if histogram.totalCount == 0 {
 		return kOneSymbolHistogramCost
 	}
 
-	for i = 0; i < data_size; i++ {
+	for i = 0; i < dataSize; i++ {
 		if histogram.data_[i] > 0 {
 			s[count] = i
 			count++
@@ -329,14 +329,14 @@ func populationCostDistance(histogram *histogramDistance) float64 {
 	}
 
 	if count == 2 {
-		return kTwoSymbolHistogramCost + float64(histogram.total_count_)
+		return kTwoSymbolHistogramCost + float64(histogram.totalCount)
 	}
 
 	if count == 3 {
 		var histo0 uint32 = histogram.data_[s[0]]
 		var histo1 uint32 = histogram.data_[s[1]]
 		var histo2 uint32 = histogram.data_[s[2]]
-		var histomax uint32 = brotli_max_uint32_t(histo0, brotli_max_uint32_t(histo1, histo2))
+		var histomax uint32 = brotliMaxUint32T(histo0, brotliMaxUint32T(histo1, histo2))
 		return kThreeSymbolHistogramCost + 2*(float64(histo0)+float64(histo1)+float64(histo2)) - float64(histomax)
 	}
 
@@ -361,18 +361,18 @@ func populationCostDistance(histogram *histogramDistance) float64 {
 		}
 
 		h23 = histo[2] + histo[3]
-		histomax = brotli_max_uint32_t(h23, histo[0])
+		histomax = brotliMaxUint32T(h23, histo[0])
 		return kFourSymbolHistogramCost + 3*float64(h23) + 2*(float64(histo[0])+float64(histo[1])) - float64(histomax)
 	}
 	{
-		var max_depth uint = 1
-		var depth_histo = [codeLengthCodes]uint32{0}
+		var maxDepth uint = 1
+		var depthHisto = [codeLengthCodes]uint32{0}
 		/* In this loop we compute the entropy of the histogram and simultaneously
 		   build a simplified histogram of the code length codes where we use the
 		   zero repeat code 17, but we don't use the non-zero repeat code 16. */
 
-		var log2total float64 = fastLog2(histogram.total_count_)
-		for i = 0; i < data_size; {
+		var log2total float64 = fastLog2(histogram.totalCount)
+		for i = 0; i < dataSize; {
 			if histogram.data_[i] > 0 {
 				var log2p float64 = log2total - fastLog2(uint(histogram.data_[i]))
 				/* Compute -log2(P(symbol)) = -log2(count(symbol)/total_count) =
@@ -386,11 +386,11 @@ func populationCostDistance(histogram *histogramDistance) float64 {
 					depth = 15
 				}
 
-				if depth > max_depth {
-					max_depth = depth
+				if depth > maxDepth {
+					maxDepth = depth
 				}
 
-				depth_histo[depth]++
+				depthHisto[depth]++
 				i++
 			} else {
 				var reps uint32 = 1
@@ -398,23 +398,23 @@ func populationCostDistance(histogram *histogramDistance) float64 {
 				   and 17 code length codes to the code length code histogram. */
 
 				var k uint
-				for k = i + 1; k < data_size && histogram.data_[k] == 0; k++ {
+				for k = i + 1; k < dataSize && histogram.data_[k] == 0; k++ {
 					reps++
 				}
 
 				i += uint(reps)
-				if i == data_size {
+				if i == dataSize {
 					/* Don't add any cost for the last zero run, since these are encoded
 					   only implicitly. */
 					break
 				}
 
 				if reps < 3 {
-					depth_histo[0] += reps
+					depthHisto[0] += reps
 				} else {
 					reps -= 2
 					for reps > 0 {
-						depth_histo[repeatZeroCodeLength]++
+						depthHisto[repeatZeroCodeLength]++
 
 						/* Add the 3 extra bits for the 17 code length code. */
 						bits += 3
@@ -426,10 +426,10 @@ func populationCostDistance(histogram *histogramDistance) float64 {
 		}
 
 		/* Add the estimated encoding cost of the code length code histogram. */
-		bits += float64(18 + 2*max_depth)
+		bits += float64(18 + 2*maxDepth)
 
 		/* Add the entropy of the code length code histogram. */
-		bits += bitsEntropy(depth_histo[:], codeLengthCodes)
+		bits += bitsEntropy(depthHisto[:], codeLengthCodes)
 	}
 
 	return bits

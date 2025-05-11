@@ -76,7 +76,7 @@ func findBlocksDistance(data []uint16, length uint, block_switch_bitcost float64
 		insert_cost[i] = 0
 	}
 	for i = 0; i < num_histograms; i++ {
-		insert_cost[i] = fastLog2(uint(uint32(histograms[i].total_count_)))
+		insert_cost[i] = fastLog2(uint(uint32(histograms[i].totalCount)))
 	}
 
 	for i = data_size; i != 0; {
@@ -202,7 +202,7 @@ func clusterBlocksDistance(data []uint16, length uint, num_blocks uint, block_id
 	var cluster_size_capacity uint = expected_num_clusters
 	var cluster_size []uint32 = make([]uint32, cluster_size_capacity)
 	var num_clusters uint = 0
-	var histograms []histogramDistance = make([]histogramDistance, brotli_min_size_t(num_blocks, histogramsPerBatch))
+	var histograms []histogramDistance = make([]histogramDistance, brotliMinSizeT(num_blocks, histogramsPerBatch))
 	var max_num_pairs uint = histogramsPerBatch * histogramsPerBatch / 2
 	var pairs_capacity uint = max_num_pairs + 1
 	var pairs []histogramPair = make([]histogramPair, pairs_capacity)
@@ -233,7 +233,7 @@ func clusterBlocksDistance(data []uint16, length uint, num_blocks uint, block_id
 	}
 
 	for i = 0; i < num_blocks; i += histogramsPerBatch {
-		var num_to_combine uint = brotli_min_size_t(num_blocks-i, histogramsPerBatch)
+		var num_to_combine uint = brotliMinSizeT(num_blocks-i, histogramsPerBatch)
 		var num_new_clusters uint
 		var j uint
 		for j = 0; j < num_to_combine; j++ {
@@ -244,7 +244,7 @@ func clusterBlocksDistance(data []uint16, length uint, num_blocks uint, block_id
 				pos++
 			}
 
-			histograms[j].bit_cost_ = populationCostDistance(&histograms[j])
+			histograms[j].bitCost = populationCostDistance(&histograms[j])
 			new_clusters[j] = uint32(j)
 			symbols[j] = uint32(j)
 			sizes[j] = 1
@@ -291,7 +291,7 @@ func clusterBlocksDistance(data []uint16, length uint, num_blocks uint, block_id
 
 	histograms = nil
 
-	max_num_pairs = brotli_min_size_t(64*num_clusters, (num_clusters/2)*num_clusters)
+	max_num_pairs = brotliMinSizeT(64*num_clusters, (num_clusters/2)*num_clusters)
 	if pairs_capacity < max_num_pairs+1 {
 		pairs = nil
 		pairs = make([]histogramPair, (max_num_pairs + 1))
@@ -348,8 +348,8 @@ func clusterBlocksDistance(data []uint16, length uint, num_blocks uint, block_id
 
 	clusters = nil
 	all_histograms = nil
-	brotli_ensure_capacity_uint8_t(&split.types, &split.types_alloc_size, num_blocks)
-	brotli_ensure_capacity_uint32_t(&split.lengths, &split.lengths_alloc_size, num_blocks)
+	brotli_ensure_capacity_uint8_t(&split.types, &split.typesAllocSize, num_blocks)
+	brotli_ensure_capacity_uint32_t(&split.lengths, &split.lengthsAllocSize, num_blocks)
 	{
 		var cur_length uint32 = 0
 		var block_idx uint = 0
@@ -360,14 +360,14 @@ func clusterBlocksDistance(data []uint16, length uint, num_blocks uint, block_id
 				var id byte = byte(new_index[histogram_symbols[i]])
 				split.types[block_idx] = id
 				split.lengths[block_idx] = cur_length
-				max_type = brotli_max_uint8_t(max_type, id)
+				max_type = brotliMaxUint8T(max_type, id)
 				cur_length = 0
 				block_idx++
 			}
 		}
 
-		split.num_blocks = block_idx
-		split.num_types = uint(max_type) + 1
+		split.numBlocks = block_idx
+		split.numTypes = uint(max_type) + 1
 	}
 
 	new_index = nil
@@ -384,15 +384,15 @@ func splitByteVectorDistance(data []uint16, length uint, literals_per_histogram 
 	}
 
 	if length == 0 {
-		split.num_types = 1
+		split.numTypes = 1
 		return
 	} else if length < kMinLengthForBlockSplitting {
-		brotli_ensure_capacity_uint8_t(&split.types, &split.types_alloc_size, split.num_blocks+1)
-		brotli_ensure_capacity_uint32_t(&split.lengths, &split.lengths_alloc_size, split.num_blocks+1)
-		split.num_types = 1
-		split.types[split.num_blocks] = 0
-		split.lengths[split.num_blocks] = uint32(length)
-		split.num_blocks++
+		brotli_ensure_capacity_uint8_t(&split.types, &split.typesAllocSize, split.numBlocks+1)
+		brotli_ensure_capacity_uint32_t(&split.lengths, &split.lengthsAllocSize, split.numBlocks+1)
+		split.numTypes = 1
+		split.types[split.numBlocks] = 0
+		split.lengths[split.numBlocks] = uint32(length)
+		split.numBlocks++
 		return
 	}
 

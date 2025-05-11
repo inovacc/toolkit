@@ -31,7 +31,7 @@ func NewReader(src io.Reader) *Reader {
 // This permits reusing a Reader rather than allocating a new one.
 // Error is always nil
 func (r *Reader) Reset(src io.Reader) error {
-	if r.error_code < 0 {
+	if r.errorCode < 0 {
 		// There was an unrecoverable error, leaving the Reader's state
 		// undefined. Clear out everything but the buffer.
 		*r = Reader{buf: r.buf}
@@ -61,12 +61,12 @@ func (r *Reader) Read(p []byte) (n int, err error) {
 
 	for {
 		var written uint
-		in_len := uint(len(r.in))
-		out_len := uint(len(p))
-		in_remaining := in_len
-		out_remaining := out_len
-		result := decoderDecompressStream(r, &in_remaining, &r.in, &out_remaining, &p)
-		written = out_len - out_remaining
+		inLen := uint(len(r.in))
+		outLen := uint(len(p))
+		inRemaining := inLen
+		outRemaining := outLen
+		result := decoderDecompressStream(r, &inRemaining, &r.in, &outRemaining, &p)
+		written = outLen - outRemaining
 		n = int(written)
 
 		switch result {
