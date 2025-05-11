@@ -4,30 +4,28 @@ import (
 	"bytes"
 	"crypto/sha256"
 	"encoding/binary"
+	"encoding/gob"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"io"
 	"os"
 	"path/filepath"
+	"regexp"
 	"sort"
-	"strconv"
 	"strings"
 	"time"
 )
 
-const (
-	// hash(32) + total(8) + size(8) + time(8) + name(50)
-	metadataSize = 32 + 8 + 8 + 8 + 50
-)
-
-type Split interface {
-	SplitFile(file *os.File, outDir string, chunks int) error
-	MergeFile(inDir string) error
-	SplitData(v any, a []any, chunks int) error
-	MergeData(a []any, v any) error
+type metadata struct {
+	Hash  [32]byte // 32 bytes SHA-256
+	Total uint32   // 4 bytes
+	Size  int64    // 8 bytes
+	Time  int64    // 8 bytes
+	Name  [46]byte // truncated or padded filename
 }
 
-type Impl struct {
+type Split struct {
 	Name     string `json:"name"`
 	Filename []byte `json:"filename"`
 	Time     int64  `json:"timestamp"`
@@ -36,138 +34,194 @@ type Impl struct {
 	NameLen  uint16 `json:"nameLen"`
 }
 
-func NewSplit() Split {
-	return &Impl{}
+func NewSplit() *Split {
+	return &Split{}
 }
 
-func (i *Impl) SplitFile(file *os.File, outDir string, chunks int) error {
+func (s *Split) SplitFile(file *os.File, outDir string, chunks int) error {
 	if chunks < 2 {
-		return errors.New("chunks must be greater than or equal to 2")
+		return errors.New("chunks must be at least 2")
 	}
 
-	fileSize := i.fileSize(file)
-	size := i.calculateChunks(fileSize, chunks)
-	buf := make([]byte, size)
-	var index uint64
+	stat, err := file.Stat()
+	if err != nil {
+		return err
+	}
+	fileSize := stat.Size()
+	chunkSize := fileSize/int64(chunks) + 1
+	buf := make([]byte, chunkSize)
 
-	if _, err := os.Stat(outDir); errors.Is(err, os.ErrNotExist) {
-		if err := os.MkdirAll(outDir, os.ModePerm); err != nil {
-			return err
-		}
+	if err := os.MkdirAll(outDir, 0755); err != nil {
+		return err
 	}
 
 	hash := sha256.New()
-
-	var firstChunk = true
-	var chunkName string
-
+	nameBase := filepath.Base(file.Name())
 	meta := metadata{
-		Total: chunks,
-		Name:  file.Name(),
+		Total: uint32(chunks),
 		Time:  time.Now().Unix(),
 		Size:  fileSize,
 	}
+	copy(meta.Name[:], nameBase)
 
-	for {
+	var firstChunk string
+	for i := 0; ; i++ {
 		n, err := file.Read(buf)
 		if n > 0 {
-			chunkFile := i.fixFileName(index, outDir, file.Name())
-
-			if firstChunk {
-				firstChunk = false
-				chunkFile = strings.ReplaceAll(chunkFile, "part", "tmp")
-				chunkName = chunkFile
+			chunkName := fmt.Sprintf("%s_%04d.part", strings.TrimSuffix(nameBase, filepath.Ext(nameBase)), i)
+			fullPath := filepath.Join(outDir, chunkName)
+			if i == 0 {
+				fullPath = strings.Replace(fullPath, "part", "tmp", 1)
+				firstChunk = fullPath
 			}
-
-			if err := i.save(chunkFile, buf[:n]); err != nil {
-				return err
+			if writeErr := os.WriteFile(fullPath, buf[:n], 0644); writeErr != nil {
+				return writeErr
 			}
-
 			hash.Write(buf[:n])
-			index++
 		}
 		if err != nil {
 			if err == io.EOF {
-				meta.Hash = hash.Sum(nil)
-				if err := i.injectMetadata(chunkName, meta); err != nil {
-					return err
-				}
-				break
+				copy(meta.Hash[:], hash.Sum(nil))
+				return s.injectMetadata(firstChunk, &meta)
 			}
-			break
+			return err
 		}
 	}
-	return nil
 }
 
-func (i *Impl) MergeFile(inDir string) error {
-	chunks, err := i.checkFiles(inDir)
+func (s *Split) MergeFile(inDir string) error {
+	chunks, err := s.checkFiles(inDir)
 	if err != nil {
 		return err
 	}
 
-	meta := &metadata{}
-
-	for _, chunk := range chunks {
-		if chunk.first {
-			if err := i.extractMetadata(chunk, meta); err != nil {
+	var meta metadata
+	for _, c := range chunks {
+		if c.first {
+			if err := s.extractMetadata(c.name, &meta); err != nil {
 				return err
 			}
 			break
 		}
 	}
 
-	wFile, err := os.Create(filepath.Join(inDir, meta.Name))
+	outFile, err := os.Create(filepath.Join(inDir, string(bytes.Trim(meta.Name[:], "\x00"))))
 	if err != nil {
 		return err
 	}
+	defer outFile.Close()
 
 	hash := sha256.New()
 
 	for _, chunk := range chunks {
-		rFile, err := os.Open(chunk.name)
+		f, err := os.Open(chunk.name)
 		if err != nil {
 			return err
 		}
 
 		if chunk.first {
-			if _, err := rFile.Seek(metadataSize, 0); err != nil {
+			if _, err := f.Seek(int64(binary.Size(meta)), io.SeekStart); err != nil {
+				f.Close()
 				return err
 			}
 		}
 
-		reader := io.TeeReader(rFile, hash)
-
-		if _, err := io.Copy(wFile, reader); err != nil {
+		if _, err := io.Copy(outFile, io.TeeReader(f, hash)); err != nil {
+			f.Close()
 			return err
 		}
-		rFile.Close()
+		f.Close()
 	}
 
-	sum := hash.Sum(nil)
-
-	if !bytes.Equal(sum, meta.Hash) {
-		return errors.New("merge failed, file not match")
+	if !bytes.Equal(hash.Sum(nil), meta.Hash[:]) {
+		return errors.New("hash mismatch: file not reconstructed properly")
 	}
 
-	for _, chunk := range chunks {
-		if err := os.Remove(chunk.name); err != nil {
-			return err
-		}
+	for _, c := range chunks {
+		_ = os.Remove(c.name)
 	}
 
-	fmt.Println("file restored successfully")
+	fmt.Println("Merge successful.")
 	return nil
 }
 
-func (i *Impl) SplitData(v any, a []any, chunks int) error {
-	// TODO implement me
-	panic("implement me")
+func (s *Split) SplitData(v any, a []any, chunks int) error {
+	if v == nil {
+		return errors.New("input is nil")
+	}
+	if chunks < 2 {
+		return errors.New("chunks must be at least 2")
+	}
+	if len(a) != chunks {
+		return fmt.Errorf("output slice length must be %d", chunks)
+	}
+
+	var buf bytes.Buffer
+	if err := gob.NewEncoder(&buf).Encode(v); err != nil {
+		return fmt.Errorf("gob encode failed: %w", err)
+	}
+	blob := buf.Bytes()
+
+	partSize := len(blob) / chunks
+	if partSize == 0 {
+		partSize = 1
+	}
+
+	for i := 0; i < chunks; i++ {
+		start := i * partSize
+		end := start + partSize
+		if i == chunks-1 || end > len(blob) {
+			end = len(blob)
+		}
+		a[i] = blob[start:end]
+	}
+
+	return nil
 }
 
-func (i *Impl) MergeData(a []any, v any) error {
-	// TODO implement me
-	panic("implement me")
+func (s *Split) MergeData(a []any, v any) error {
+	if v == nil {
+		return errors.New("output is nil")
+	}
+	var combined []byte
+	for _, part := range a {
+		b, ok := part.([]byte)
+		if !ok {
+			return fmt.Errorf("chunk type is not []byte")
+		}
+		combined = append(combined, b...)
+	}
+	return gob.NewDecoder(bytes.NewReader(combined)).Decode(v)
+}
+
+func (s *Split) encodeFormat(v any, format string) ([]byte, error) {
+	var buf bytes.Buffer
+	switch strings.ToLower(format) {
+	case "gob":
+		if err := gob.NewEncoder(&buf).Encode(v); err != nil {
+			return nil, err
+		}
+	case "json":
+		data, err := json.Marshal(v)
+		if err != nil {
+			return nil, err
+		}
+		buf.Write(data)
+	default:
+		return nil, fmt.Errorf("unsupported format: %s", format)
+	}
+	return buf.Bytes(), nil
+}
+
+func (s *Split) decodeFormat(data []byte, v any, format string) error {
+	switch strings.ToLower(format) {
+	case "gob":
+		return gob.NewDecoder(bytes.NewReader(data)).Decode(v)
+	case "json":
+		return json.Unmarshal(data, v)
+	default:
+		return fmt.Errorf("unsupported format: %s", format)
+	}
 }
 
 type parsedChunk struct {
@@ -176,31 +230,67 @@ type parsedChunk struct {
 	index int
 }
 
-func (i *Impl) checkFiles(inDir string) ([]parsedChunk, error) {
-	entries, err := os.ReadDir(inDir)
+func (s *Split) injectMetadata(chunkPath string, meta *metadata) error {
+	src, err := os.Open(chunkPath)
 	if err != nil {
-		return nil, fmt.Errorf("failed to read directory: %w", err)
+		return err
+	}
+	defer src.Close()
+
+	dstName := strings.Replace(chunkPath, "tmp", "part", 1)
+	dst, err := os.Create(dstName)
+	if err != nil {
+		return err
+	}
+	defer dst.Close()
+
+	buf := new(bytes.Buffer)
+	if err := binary.Write(buf, binary.BigEndian, meta); err != nil {
+		return err
+	}
+
+	if _, err := dst.Write(buf.Bytes()); err != nil {
+		return err
+	}
+
+	if _, err := io.Copy(dst, src); err != nil {
+		return err
+	}
+
+	return os.Remove(chunkPath)
+}
+
+func (s *Split) extractMetadata(filePath string, meta *metadata) error {
+	f, err := os.Open(filePath)
+	if err != nil {
+		return err
+	}
+	defer f.Close()
+
+	return binary.Read(f, binary.BigEndian, meta)
+}
+
+func (s *Split) checkFiles(dir string) ([]parsedChunk, error) {
+	entries, err := os.ReadDir(dir)
+	if err != nil {
+		return nil, err
 	}
 
 	var chunks []parsedChunk
+	re := regexp.MustCompile(`_(\d{4})\.part$`)
 
-	for _, entry := range entries {
-		if entry.IsDir() {
+	for _, e := range entries {
+		if e.IsDir() {
 			continue
 		}
-
-		chunk := filepath.Join(inDir, entry.Name())
-		fileIndex, err := i.getIndex(chunk)
-		if err != nil {
-			return nil, err
+		name := filepath.Join(dir, e.Name())
+		m := re.FindStringSubmatch(e.Name())
+		if len(m) != 2 {
+			continue
 		}
-
-		pc := parsedChunk{name: chunk, index: fileIndex}
-
-		if fileIndex == 0 {
-			pc.first = true
-		}
-		chunks = append(chunks, pc)
+		var idx int
+		_, _ = fmt.Sscanf(m[1], "%d", &idx)
+		chunks = append(chunks, parsedChunk{name: name, index: idx, first: idx == 0})
 	}
 
 	sort.Slice(chunks, func(i, j int) bool {
@@ -208,154 +298,4 @@ func (i *Impl) checkFiles(inDir string) ([]parsedChunk, error) {
 	})
 
 	return chunks, nil
-}
-
-func (i *Impl) calculateChunks(size int64, chunks int) int64 {
-	return size/int64(chunks) + 1
-}
-
-func (i *Impl) fileSize(file *os.File) int64 {
-	size, _ := file.Stat()
-	return size.Size()
-}
-
-func (i *Impl) save(fileName string, data []byte) error {
-	return os.WriteFile(fileName, data, 0644)
-}
-
-func (i *Impl) fixFileName(index uint64, outDir, name string) string {
-	name = strings.Split(filepath.Base(name), ".")[0]
-	return filepath.Join(outDir, fmt.Sprintf("%s_%04d.part", name, index))
-}
-
-func (i *Impl) getIndex(chunk string) (int, error) {
-	result := -1
-	parts := strings.Split(chunk, "_")
-	for _, part := range parts {
-		segments := strings.Split(part, ".")
-		if len(segments) != 2 {
-			continue
-		}
-
-		v, err := strconv.Atoi(segments[0])
-		if err != nil {
-			continue
-		}
-		result = v
-	}
-	return result, nil
-}
-
-type metadata struct {
-	Total int
-	Size  int64
-	Time  int64
-	Crc   uint32
-	Hash  []byte
-	Name  string
-}
-
-func (i *Impl) injectMetadata(chunkFile string, meta metadata) error {
-	rFile, err := os.Open(chunkFile)
-	if err != nil {
-		return err
-	}
-
-	chunkFileNew := strings.ReplaceAll(chunkFile, "tmp", "part")
-	wFile, err := os.Create(chunkFileNew)
-	if err != nil {
-		return err
-	}
-
-	// hash(32) + total(8) + size(8) + time(8) + name(50)
-	data := make([]byte, metadataSize)
-
-	offset := 0 // 32 bytes for file size
-
-	// TODO work around to save hash as binary
-	{
-		var hashValues []uint64
-		for i := 0; i+8 <= 32; i += 8 {
-			part := binary.BigEndian.Uint64(meta.Hash[i : i+8])
-			hashValues = append(hashValues, part)
-		}
-
-		for i, v := range hashValues {
-			offset = i * 8
-			binary.BigEndian.PutUint64(data[offset:], v)
-		}
-	}
-
-	offset += 8
-	binary.BigEndian.PutUint64(data[offset:], uint64(meta.Total))
-
-	offset += 8 // 8 bytes for file size
-	binary.BigEndian.PutUint64(data[offset:], uint64(meta.Size))
-
-	offset += 8 // 8 bytes for file time
-	binary.BigEndian.PutUint64(data[offset:], uint64(meta.Time))
-
-	offset += 8 // 50 bytes for file name
-	nameBytes := []byte(meta.Name)
-	copy(data[offset:], nameBytes)
-
-	if _, err := io.Copy(wFile, bytes.NewReader(data)); err != nil {
-		return err
-	}
-
-	if _, err := io.Copy(wFile, rFile); err != nil {
-		return err
-	}
-
-	rFile.Close()
-	wFile.Close()
-	os.Remove(chunkFile)
-
-	return nil
-}
-
-func (i *Impl) extractMetadata(chunk parsedChunk, meta *metadata) error {
-	rFile, err := os.Open(chunk.name)
-	if err != nil {
-		return err
-	}
-
-	// hash(32) + total(8) + size(8) + time(8) + name(50)
-	data := make([]byte, metadataSize)
-
-	_, err = rFile.Read(data)
-	if err != nil {
-		return err
-	}
-
-	rFile.Close()
-
-	// TODO work around to reconstruct hash from uitn64
-	{
-		var hashParts []uint64
-		for i := 0; i+8 <= 32; i += 8 {
-			v := binary.BigEndian.Uint64(data[i : i+8])
-			hashParts = append(hashParts, v)
-		}
-
-		for _, v := range hashParts {
-			temp := make([]byte, 8)
-			binary.BigEndian.PutUint64(temp, v)
-			meta.Hash = append(meta.Hash, temp...)
-		}
-	}
-
-	offset := 40 // 32 bytes for file size
-	meta.Total = int(binary.BigEndian.Uint64(data[offset:]))
-
-	offset += 8 // 8 bytes for file size
-	meta.Size = int64(binary.BigEndian.Uint64(data[offset:]))
-
-	offset += 8 // 8 bytes for file time
-	meta.Time = int64(binary.BigEndian.Uint64(data[offset:]))
-
-	offset += 8 // 50 bytes for file name
-	meta.Name = strings.SplitN(string(data[offset:]), "\x00", 2)[0]
-
-	return nil
 }
