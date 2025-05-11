@@ -41,6 +41,10 @@ func NewSplit() Split {
 }
 
 func (i *Impl) SplitFile(file *os.File, outDir string, chunks int) error {
+	if chunks < 2 {
+		return errors.New("chunks must be greater than or equal to 2")
+	}
+
 	fileSize := i.fileSize(file)
 	size := i.calculateChunks(fileSize, chunks)
 	buf := make([]byte, size)
@@ -225,9 +229,21 @@ func (i *Impl) fixFileName(index uint64, outDir, name string) string {
 }
 
 func (i *Impl) getIndex(chunk string) (int, error) {
-	chunk = strings.Split(chunk, "_")[1]
-	chunk = strings.Split(chunk, ".")[0]
-	return strconv.Atoi(chunk)
+	result := -1
+	parts := strings.Split(chunk, "_")
+	for _, part := range parts {
+		segments := strings.Split(part, ".")
+		if len(segments) != 2 {
+			continue
+		}
+
+		v, err := strconv.Atoi(segments[0])
+		if err != nil {
+			continue
+		}
+		result = v
+	}
+	return result, nil
 }
 
 type metadata struct {
