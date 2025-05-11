@@ -21,6 +21,8 @@ import (
 	"testing"
 
 	"github.com/inovacc/toolkit/compression/internal/zstd/internal/snapref"
+	"github.com/inovacc/toolkit/compression/internal/zstd/zip"
+	"github.com/inovacc/toolkit/compression/internal/zstd/zstd"
 )
 
 const maxUint = ^uint(0)
