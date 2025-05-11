@@ -1,10 +1,11 @@
 package mnemonic
 
 import (
-	"crypto/pbkdf2"
 	"crypto/sha512"
 	"encoding/hex"
 	"fmt"
+
+	"golang.org/x/crypto/pbkdf2"
 )
 
 // Seed represents a binary seed used for HD wallet generation

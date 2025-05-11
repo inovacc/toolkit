@@ -58,9 +58,9 @@ func TestCompressedSet(t *testing.T) {
 }
 
 func testCompressedSetString(t *testing.T) {
-	id1, _ := Parse("0uHjRkQoL2JKAQIULPdqqb5fOkk")
-	id2, _ := Parse("0uHjRvkOG5CbtoXW5oCEp3L2xBu")
-	id3, _ := Parse("0uHjSJ4Pe5606kT2XWixK6dirlo")
+	id1, _ := ParseKSUID("0uHjRkQoL2JKAQIULPdqqb5fOkk")
+	id2, _ := ParseKSUID("0uHjRvkOG5CbtoXW5oCEp3L2xBu")
+	id3, _ := ParseKSUID("0uHjSJ4Pe5606kT2XWixK6dirlo")
 
 	set := Compress(id1, id2, id3)
 
@@ -70,9 +70,9 @@ func testCompressedSetString(t *testing.T) {
 }
 
 func testCompressedSetGoString(t *testing.T) {
-	id1, _ := Parse("0uHjRkQoL2JKAQIULPdqqb5fOkk")
-	id2, _ := Parse("0uHjRvkOG5CbtoXW5oCEp3L2xBu")
-	id3, _ := Parse("0uHjSJ4Pe5606kT2XWixK6dirlo")
+	id1, _ := ParseKSUID("0uHjRkQoL2JKAQIULPdqqb5fOkk")
+	id2, _ := ParseKSUID("0uHjRvkOG5CbtoXW5oCEp3L2xBu")
+	id3, _ := ParseKSUID("0uHjSJ4Pe5606kT2XWixK6dirlo")
 
 	set := Compress(id1, id2, id3)
 

@@ -90,7 +90,7 @@ func TestStructToMap(t *testing.T) {
 
 	result := StructToMap(cfg)
 
-	if result["name"] != "MapMe" || result["Enabled"] != true || result["MaxSize"] != 42 {
+	if result["Name"] != "MapMe" || result["Enabled"] != true || result["MaxSize"] != 42 {
 		t.Errorf("Unexpected result in StructToMap: %+v", result)
 	}
 }

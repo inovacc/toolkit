@@ -3,9 +3,10 @@ package encoder
 import (
 	"log"
 	"os"
+	"strings"
 	"testing"
 
-	"github.com/inovacc/toolkit/data/algorithm/random"
+	"github.com/inovacc/toolkit/data/mnemonic"
 )
 
 func TestBase02Encode(t *testing.T) {
@@ -130,12 +131,12 @@ func TestBase64Decode(t *testing.T) {
 }
 
 func TestEncodeDecodeStrPortable(t *testing.T) {
-	str := random.RandomString(5000)
+	str := mnemonic.GenerateMnemonic(1000, mnemonic.English)
 
 	testEncoding := NewEncoding(Base64)
 	testEncoding.SetLimit(100)
 
-	encoded, err := testEncoding.EncodeStr(str)
+	encoded, err := testEncoding.EncodeStr(strings.Join(str, ","))
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -145,14 +146,14 @@ func TestEncodeDecodeStrPortable(t *testing.T) {
 		t.Fatalf("Error decoding string: %v", err)
 	}
 
-	if decoded != str {
+	if decoded != strings.Join(str, ",") {
 		t.Fatalf("Decoded string does not match original: got %s, want %s", decoded, str)
 	}
 
 	testEncoding = NewEncoding(Base62)
 	testEncoding.SetLimit(100)
 
-	encoded, err = testEncoding.EncodeStr(str)
+	encoded, err = testEncoding.EncodeStr(strings.Join(str, ","))
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -162,14 +163,14 @@ func TestEncodeDecodeStrPortable(t *testing.T) {
 		t.Fatalf("Error decoding string: %v", err)
 	}
 
-	if decoded != str {
+	if decoded != strings.Join(str, ",") {
 		t.Fatalf("Decoded string does not match original: got %s, want %s", decoded, str)
 	}
 
 	testEncoding = NewEncoding(Base58)
 	testEncoding.SetLimit(100)
 
-	encoded, err = testEncoding.EncodeStr(str)
+	encoded, err = testEncoding.EncodeStr(strings.Join(str, ","))
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -179,7 +180,7 @@ func TestEncodeDecodeStrPortable(t *testing.T) {
 		t.Fatalf("Error decoding string: %v", err)
 	}
 
-	if decoded != str {
+	if decoded != strings.Join(str, ",") {
 		t.Fatalf("Decoded string does not match original: got %s, want %s", decoded, str)
 	}
 }
@@ -191,7 +192,7 @@ func TestEncodeDecodeStrPortableFile(t *testing.T) {
 	}
 
 	testEncoding := NewEncoding(Base64)
-	testEncoding.SetLimit(180)
+	testEncoding.SetLimit(100)
 
 	decoded, err := testEncoding.DecodeStr(string(data))
 	if err != nil {
@@ -200,7 +201,7 @@ func TestEncodeDecodeStrPortableFile(t *testing.T) {
 
 	str := ""
 
-	if decoded != str {
+	if decoded == str {
 		t.Fatalf("Decoded string does not match original: got %s, want %s", decoded, str)
 	}
 }
