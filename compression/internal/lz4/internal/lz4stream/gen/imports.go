@@ -1,12 +1,9 @@
-//go:build ignore
-
 package main
 
 import (
 	"bytes"
 	"fmt"
 	"io"
-	"log"
 	"os"
 
 	"github.com/inovacc/toolkit/compression/internal/lz4/internal/lz4block"
@@ -33,15 +30,8 @@ type DataBlockSize struct {
 	Uncompressed bool
 }
 
-func main() {
-	err := do()
-	if err != nil {
-		log.Fatal(err)
-	}
-}
-
 func do() error {
-	out, err := os.Create("frame_gen.go")
+	out, err := os.Create("../frame_gen.go")
 	if err != nil {
 		return err
 	}
