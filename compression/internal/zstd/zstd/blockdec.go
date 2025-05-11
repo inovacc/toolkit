@@ -17,7 +17,7 @@ import (
 
 type blockType uint8
 
-//go:generate stringer -type=blockType,literalsBlockType,seqCompMode,tableIndex
+//go:generate go run golang.org/x/tools/cmd/stringer -type=blockType,literalsBlockType,seqCompMode,tableIndex
 
 const (
 	blockTypeRaw blockType = iota
