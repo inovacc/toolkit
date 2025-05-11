@@ -5,6 +5,8 @@ import (
 	"math/rand"
 	"strings"
 	"time"
+
+	"github.com/brianvoe/gofakeit/v7"
 )
 
 func GenerateCreditCard(actual bool) Card {

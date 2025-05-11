@@ -4,6 +4,8 @@ import (
 	"bytes"
 	"fmt"
 	"testing"
+
+	"github.com/inovacc/toolkit/compression/internal/zstd/internal/fuzz"
 )
 
 func FuzzCompress(f *testing.F) {

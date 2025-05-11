@@ -168,7 +168,7 @@ func TestIssue23(t *testing.T) {
 }
 
 func TestIssue116(t *testing.T) {
-	src, err := os.ReadFile("../../fuzz/corpus/pg1661.txt")
+	src, err := os.ReadFile("../fuzz/corpus/pg1661.txt")
 	if err != nil {
 		t.Fatal(err)
 	}

@@ -5,6 +5,9 @@ package gzkp
 import (
 	"io"
 	"sync"
+
+	"github.com/inovacc/toolkit/compression/internal/zstd/gzhttp/writer"
+	"github.com/inovacc/toolkit/compression/internal/zstd/gzip"
 )
 
 // gzipWriterPools stores a sync.Pool for each compression level for reuse of

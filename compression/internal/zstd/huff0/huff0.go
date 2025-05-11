@@ -9,6 +9,8 @@ import (
 	"math"
 	"math/bits"
 	"sync"
+
+	"github.com/inovacc/toolkit/compression/internal/zstd/fse"
 )
 
 const (

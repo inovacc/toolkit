@@ -8,6 +8,9 @@ import (
 	"bytes"
 	"fmt"
 	"os"
+
+	"github.com/inovacc/toolkit/compression/internal/zstd/s2"
+	"github.com/inovacc/toolkit/compression/internal/zstd/zstd"
 )
 
 func ExampleMakeDict() {

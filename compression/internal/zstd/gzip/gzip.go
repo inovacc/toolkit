@@ -9,6 +9,8 @@ import (
 	"fmt"
 	"hash/crc32"
 	"io"
+
+	"github.com/inovacc/toolkit/compression/internal/zstd/flate"
 )
 
 // These constants are copied from the flate package, so that code that imports

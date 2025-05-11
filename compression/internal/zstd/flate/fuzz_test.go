@@ -9,6 +9,8 @@ import (
 	"os"
 	"strconv"
 	"testing"
+
+	"github.com/inovacc/toolkit/compression/internal/zstd/internal/fuzz"
 )
 
 // Fuzzing tweaks:

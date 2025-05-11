@@ -37,6 +37,8 @@ package s2
 import (
 	"bytes"
 	"hash/crc32"
+
+	"github.com/inovacc/toolkit/compression/internal/zstd/internal/race"
 )
 
 /*

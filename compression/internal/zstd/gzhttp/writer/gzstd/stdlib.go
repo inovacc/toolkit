@@ -6,6 +6,8 @@ import (
 	"compress/gzip"
 	"io"
 	"sync"
+
+	"github.com/inovacc/toolkit/compression/internal/zstd/gzhttp/writer"
 )
 
 // gzipWriterPools stores a sync.Pool for each compression level for reuse of

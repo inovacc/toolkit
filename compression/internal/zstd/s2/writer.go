@@ -13,6 +13,8 @@ import (
 	"io"
 	"runtime"
 	"sync"
+
+	"github.com/inovacc/toolkit/compression/internal/zstd/internal/race"
 )
 
 const (

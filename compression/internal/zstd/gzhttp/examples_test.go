@@ -10,6 +10,8 @@ import (
 	"log"
 	"net/http"
 	"net/http/httptest"
+
+	"github.com/inovacc/toolkit/compression/internal/zstd/gzhttp"
 )
 
 func ExampleTransport() {

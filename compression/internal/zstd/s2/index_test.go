@@ -9,6 +9,8 @@ import (
 	"os"
 	"sync"
 	"testing"
+
+	"github.com/inovacc/toolkit/compression/internal/zstd/s2"
 )
 
 func ExampleIndex_Load() {
