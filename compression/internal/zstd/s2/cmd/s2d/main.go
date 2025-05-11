@@ -18,6 +18,8 @@ import (
 	"unicode"
 
 	"github.com/inovacc/toolkit/compression/internal/zstd/s2"
+	"github.com/inovacc/toolkit/compression/internal/zstd/s2/cmd/internal/filepathx"
+	"github.com/inovacc/toolkit/compression/internal/zstd/s2/cmd/internal/readahead"
 )
 
 var (

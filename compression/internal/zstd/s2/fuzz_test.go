@@ -8,6 +8,9 @@ import (
 	"fmt"
 	"io"
 	"testing"
+
+	"github.com/inovacc/toolkit/compression/internal/zstd/internal/fuzz"
+	"github.com/inovacc/toolkit/compression/internal/zstd/internal/snapref"
 )
 
 func FuzzEncodingBlocks(f *testing.F) {

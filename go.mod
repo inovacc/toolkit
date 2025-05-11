@@ -3,6 +3,7 @@ module github.com/inovacc/toolkit
 go 1.24
 
 require (
+	gitee.com/dromara/carbon/v2 v2.6.4
 	github.com/brianvoe/gofakeit/v7 v7.2.1
 	github.com/disintegration/imaging v1.6.2
 	github.com/divan/txqr v0.0.0-20190110104519-d92929c20d82

@@ -2,6 +2,8 @@ package timeutil
 
 import (
 	"time"
+
+	"gitee.com/dromara/carbon/v2"
 )
 
 // Initialize default configuration for Carbon library.

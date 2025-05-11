@@ -12,6 +12,7 @@ import (
 	"net/http/httptest"
 
 	"github.com/inovacc/toolkit/compression/internal/zstd/gzhttp"
+	"github.com/inovacc/toolkit/compression/internal/zstd/gzip"
 )
 
 func ExampleTransport() {

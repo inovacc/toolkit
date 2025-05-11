@@ -16,6 +16,9 @@ import (
 	"strconv"
 	"strings"
 	"testing"
+
+	"github.com/inovacc/toolkit/compression/internal/zstd/gzip"
+	"github.com/inovacc/toolkit/compression/internal/zstd/zstd"
 )
 
 var (
