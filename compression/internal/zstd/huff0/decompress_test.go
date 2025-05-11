@@ -6,6 +6,8 @@ import (
 	"io"
 	"os"
 	"testing"
+
+	"github.com/inovacc/toolkit/compression/internal/zstd/zip"
 )
 
 func TestDecompress1X(t *testing.T) {

@@ -19,6 +19,8 @@ import (
 	"runtime"
 	"strings"
 	"testing"
+
+	"github.com/inovacc/toolkit/compression/internal/zstd/internal/snapref"
 )
 
 const maxUint = ^uint(0)

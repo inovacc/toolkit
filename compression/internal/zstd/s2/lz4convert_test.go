@@ -11,6 +11,10 @@ import (
 	"path/filepath"
 	"sort"
 	"testing"
+
+	"github.com/inovacc/toolkit/compression/internal/zstd/internal/fuzz"
+	"github.com/inovacc/toolkit/compression/internal/zstd/internal/lz4ref"
+	"github.com/inovacc/toolkit/compression/internal/zstd/internal/snapref"
 )
 
 func TestLZ4Converter_ConvertBlock(t *testing.T) {

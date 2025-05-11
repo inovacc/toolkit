@@ -3,6 +3,8 @@ package structure
 import (
 	"reflect"
 	"testing"
+
+	"github.com/brianvoe/gofakeit/v7"
 )
 
 func TestBlankStructure(t *testing.T) {

@@ -12,6 +12,9 @@ import (
 	"os"
 	"runtime"
 	"testing"
+
+	"github.com/inovacc/toolkit/compression/internal/zstd/gzip"
+	"github.com/inovacc/toolkit/compression/internal/zstd/zstd"
 )
 
 func TestTransport(t *testing.T) {

@@ -12,6 +12,9 @@ import (
 	"reflect"
 	"strconv"
 	"testing"
+
+	"github.com/inovacc/toolkit/compression/internal/zstd/internal/cpuinfo"
+	"github.com/inovacc/toolkit/compression/internal/zstd/zip"
 )
 
 func Benchmark_seqdec_decodeNoBMI(b *testing.B) {

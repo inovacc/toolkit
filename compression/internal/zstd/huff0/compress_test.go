@@ -10,6 +10,9 @@ import (
 	"reflect"
 	"strings"
 	"testing"
+
+	"github.com/inovacc/toolkit/compression/internal/zstd/flate"
+	"github.com/inovacc/toolkit/compression/internal/zstd/zip"
 )
 
 type inputFn func() ([]byte, error)

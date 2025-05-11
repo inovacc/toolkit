@@ -9,6 +9,9 @@ import (
 	"io"
 	rdebug "runtime/debug"
 	"testing"
+
+	"github.com/inovacc/toolkit/compression/internal/zstd/internal/cpuinfo"
+	"github.com/inovacc/toolkit/compression/internal/zstd/internal/fuzz"
 )
 
 func FuzzDecodeAll(f *testing.F) {

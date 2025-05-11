@@ -15,6 +15,9 @@ import (
 	"os"
 	"strings"
 	"testing"
+
+	"github.com/inovacc/toolkit/compression/internal/zstd/internal/fuzz"
+	"github.com/inovacc/toolkit/compression/internal/zstd/zstd"
 )
 
 func TestDict(t *testing.T) {
