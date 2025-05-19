@@ -15,7 +15,7 @@ import (
 	"golang.org/x/net/html"
 )
 
-var downloadExts = []string{".pdf", ".zip", ".doc", ".docx", ".xls", ".xlsx", ".ppt", ".pptx", ".rar", ".tar.gz", ".7z"}
+var downloadExts = []string{".pdf", ".zip", ".doc", ".docx", ".xls", ".xlsx", ".ppt", ".pptx", ".rar", ".tar.gz", ".7z", ".txt"}
 
 type Downloader struct {
 	rules   map[string]bool
