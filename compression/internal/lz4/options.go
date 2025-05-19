@@ -9,8 +9,6 @@ import (
 	"github.com/inovacc/toolkit/compression/internal/lz4/internal/lz4errors"
 )
 
-//go:generate go run golang.org/x/tools/cmd/stringer -type=BlockSize,CompressionLevel -output options_gen.go
-
 type (
 	applier interface {
 		Apply(...Option) error

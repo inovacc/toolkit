@@ -14,7 +14,7 @@ func TestNewTree(t *testing.T) {
 
 	filePath := "testdata"
 
-	tree := NewTree(fs, filePath, "mock")
+	tree := NewTree(fs, filePath, NewConfig(WithExclude("mock", ".git", "node_modules", "target", ".idea")))
 
 	if err := tree.MakeTree(); err != nil {
 		t.Fatalf("Failed to build tree: %v", err)

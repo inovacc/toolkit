@@ -1,4 +1,4 @@
-.
+testdata
 ├── internal
 │   └── myapp
 │       └── logic.go

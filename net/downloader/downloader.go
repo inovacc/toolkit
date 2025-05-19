@@ -3,11 +3,14 @@ package downloader
 import (
 	"fmt"
 	"io"
+	"mime"
 	"net/http"
 	"net/url"
 	"os"
+	"path"
 	"path/filepath"
 	"strings"
+	"time"
 
 	"golang.org/x/net/html"
 )
@@ -202,4 +205,86 @@ func (d *Downloader) isSameDomain(base, link string) bool {
 		return false
 	}
 	return baseURL.Hostname() == linkURL.Hostname()
+}
+
+// URLDetails holds the resolved information about a URL.
+type URLDetails struct {
+	InitialURL          string
+	FinalURL            string
+	StatusCode          int
+	ContentType         string
+	Filename            string
+	IsRedirected        bool
+	ErrorGettingDetails string
+}
+
+func ResolveURLDetails(initialURLStr string) (*URLDetails, error) {
+	details := &URLDetails{InitialURL: initialURLStr}
+
+	client := http.Client{
+		Timeout: 30 * time.Second,
+	}
+
+	req, err := http.NewRequest("HEAD", initialURLStr, nil)
+	if err != nil {
+		return nil, fmt.Errorf("failed to create HEAD request for '%s': %w", initialURLStr, err)
+	}
+
+	resp, err := client.Do(req)
+	if err != nil {
+		return nil, fmt.Errorf("HEAD request to '%s' (or subsequent redirects) failed: %w", initialURLStr, err)
+	}
+	defer func(Body io.ReadCloser) {
+		if err := Body.Close(); err != nil {
+			details.ErrorGettingDetails += fmt.Sprintf(" | failed to close response body: %v", err)
+		}
+	}(resp.Body)
+
+	finalURL := resp.Request.URL
+	details.FinalURL = finalURL.String()
+	details.StatusCode = resp.StatusCode
+	details.IsRedirected = initialURLStr != details.FinalURL
+
+	contentTypeHeader := resp.Header.Get("Content-Type")
+	if contentTypeHeader != "" {
+		mediaType, _, parseErr := mime.ParseMediaType(contentTypeHeader)
+		if parseErr == nil {
+			details.ContentType = mediaType
+		} else {
+			details.ContentType = contentTypeHeader
+			details.ErrorGettingDetails += fmt.Sprintf(" | failed to parse Content-Type header '%s': %v", contentTypeHeader, parseErr)
+		}
+	}
+
+	var determinedFilename string
+	contentDispositionHeader := resp.Header.Get("Content-Disposition")
+	if contentDispositionHeader != "" {
+		_, params, parseErr := mime.ParseMediaType(contentDispositionHeader)
+		if parseErr == nil {
+			if fn, ok := params["filename"]; ok && fn != "" {
+				determinedFilename = fn
+			}
+		}
+		if determinedFilename == "" && parseErr != nil {
+			details.ErrorGettingDetails += fmt.Sprintf(" | failed to parse Content-Disposition header '%s': %v", contentDispositionHeader, parseErr)
+		}
+	}
+
+	if determinedFilename == "" && details.StatusCode == http.StatusOK {
+		if finalURL.Path != "" && finalURL.Path != "/" {
+			base := path.Base(finalURL.Path)
+			if base != "." && base != "/" && base != "" {
+				unescapedBase, unescapeErr := url.PathUnescape(base)
+				if unescapeErr == nil {
+					determinedFilename = unescapedBase
+				} else {
+					determinedFilename = base
+					details.ErrorGettingDetails += fmt.Sprintf(" | failed to unescape path base '%s': %v", base, unescapeErr)
+				}
+			}
+		}
+	}
+	details.Filename = determinedFilename
+
+	return details, nil
 }

@@ -18,42 +18,58 @@ const (
 	nextPrefixChild = "    "
 )
 
-// Node represents a node in the file tree, typically a file or directory.
+type OptsFn func(opts *Config)
+
+type Config struct {
+	exclude []string
+}
+
+func NewConfig(o ...OptsFn) *Config {
+	cfg := &Config{}
+	for _, opts := range o {
+		opts(cfg)
+	}
+	return cfg
+}
+
+func WithExclude(data ...string) OptsFn {
+	return func(opts *Config) {
+		opts.exclude = append(opts.exclude, data...)
+	}
+}
+
 type Node struct {
 	Name     string  `json:"name"`
 	Children []*Node `json:"children,omitempty"`
 }
 
-// Tree is a filesystem tree generator that walks a directory structure
-// and can output it in multiple formats: string tree, JSON, and Markdown.
 type Tree struct {
-	fs      afero.Fs
-	root    *Node
-	path    string
-	exclude []string
+	cfg  *Config
+	fs   afero.Fs
+	root *Node
+	path string
 }
 
-// NewTree constructs a new Tree given a filesystem interface and root path.
-// You can optionally pass directory/file names to exclude from traversal.
-func NewTree(fs afero.Fs, path string, exclude ...string) *Tree {
+func NewTree(fs afero.Fs, path string, cfg *Config) *Tree {
 	return &Tree{
-		fs:      fs,
-		path:    path,
-		root:    &Node{Name: filepath.Base(path)},
-		exclude: exclude,
+		fs:   fs,
+		path: path,
+		root: &Node{Name: filepath.Base(path)}, // Display the base name for root, or "." if a path is "."
+		cfg:  cfg,
 	}
 }
 
-// MakeTree initiates the tree construction by walking through the filesystem
-// starting from the root path.
 func (t *Tree) MakeTree() error {
 	if t.fs == nil {
 		return errors.New("nil filesystem")
 	}
+	// Adjust the root node name if the input path is "."
+	if t.path == "." {
+		t.root.Name = "."
+	}
 	return t.buildNode(t.path, t.root)
 }
 
-// ToJSON returns the directory structure encoded in JSON format.
 func (t *Tree) ToJSON() (string, error) {
 	data, err := json.MarshalIndent(t.root, "", "  ")
 	if err != nil {
@@ -62,25 +78,30 @@ func (t *Tree) ToJSON() (string, error) {
 	return string(data), nil
 }
 
-// ToMarkdown returns the directory structure in a Markdown list format.
 func (t *Tree) ToMarkdown() string {
 	var b strings.Builder
-	t.writeMarkdown(&b, t.root, "")
+	// For Markdown, usually we start with the root name without a prefix bullet
+	_, _ = fmt.Fprintf(&b, "- %s\n", t.root.Name)
+	for _, child := range t.root.Children {
+		t.writeMarkdown(&b, child, "  ")
+	}
 	return b.String()
 }
 
-// ToString returns the directory structure in a human-readable "tree" CLI-like format.
 func (t *Tree) ToString() string {
 	var b strings.Builder
-	t.writeTreeFormat(&b, t.root, "", true)
+	// Start with the root name for ToString as well.
+	// The original writeTreeFormat started with ".\n" unconditionally for the root's children.
+	// We'll print the root name first, then its children.
+	b.WriteString(t.root.Name + "\n")
+	t.writeTreeFormat(&b, t.root, "", false) // Pass false for isRoot initially as the root is already printed
 	return b.String()
 }
 
-// writeTreeFormat recursively writes a visual tree format to the string builder.
-func (t *Tree) writeTreeFormat(b *strings.Builder, node *Node, prefix string, isRoot bool) {
-	if isRoot {
-		b.WriteString(".\n")
-	}
+func (t *Tree) writeTreeFormat(b *strings.Builder, node *Node, prefix string, isRootAlreadyPrinted bool) {
+	// isRootAlreadyPrinted is a bit of a misnomer now, it's more about whether we are processing children of the displayed root
+	// If the node passed is the actual root, its name is printed before calling this.
+	// This function now focuses on printing children.
 
 	for i, child := range node.Children {
 		isLast := i == len(node.Children)-1
@@ -95,12 +116,13 @@ func (t *Tree) writeTreeFormat(b *strings.Builder, node *Node, prefix string, is
 		_, _ = fmt.Fprintf(b, "%s%s%s\n", prefix, conn, child.Name)
 
 		if len(child.Children) > 0 {
-			t.writeTreeFormat(b, child, prefix+next, false)
+			// For children, the prefix logic is correct.
+			// The isRoot flag (now isRootAlreadyPrinted) was originally for the ".\n" line, which is handled differently now.
+			t.writeTreeFormat(b, child, fmt.Sprintf("%s%s", prefix, next), isRootAlreadyPrinted)
 		}
 	}
 }
 
-// writeMarkdown recursively writes a Markdown representation of the tree.
 func (t *Tree) writeMarkdown(b *strings.Builder, node *Node, prefix string) {
 	_, _ = fmt.Fprintf(b, "%s- %s\n", prefix, node.Name)
 	for _, child := range node.Children {
@@ -108,43 +130,45 @@ func (t *Tree) writeMarkdown(b *strings.Builder, node *Node, prefix string) {
 	}
 }
 
-// buildNode reads a directory and recursively builds nodes for its contents.
-func (t *Tree) buildNode(path string, parent *Node) error {
-	entries, err := afero.ReadDir(t.fs, path)
+func (t *Tree) buildNode(currentPath string, parent *Node) error {
+	entries, err := afero.ReadDir(t.fs, currentPath)
 	if err != nil {
 		return err
 	}
 
-	// Sort directories before files, and alphabetically within types
 	sort.Slice(entries, func(i, j int) bool {
 		if entries[i].IsDir() != entries[j].IsDir() {
-			return entries[i].IsDir()
+			return entries[i].IsDir() // Directories first
 		}
-		return entries[i].Name() < entries[j].Name()
+		return entries[i].Name() < entries[j].Name() // Then by name
 	})
 
 	for _, entry := range entries {
-		if t.shouldExclude(entry.Name()) {
-			continue
+		// Check if the current entry (file or directory) should be excluded
+		if t.isEntryExcluded(entry.Name()) {
+			continue // Skip this entry entirely
 		}
 
 		child := &Node{Name: entry.Name()}
 		parent.Children = append(parent.Children, child)
 
+		// If it's a directory (and was not excluded above), then recurse
 		if entry.IsDir() {
-			err := t.buildNode(filepath.Join(path, entry.Name()), child)
+			err := t.buildNode(filepath.Join(currentPath, entry.Name()), child)
 			if err != nil {
-				return err
+				return err // Propágate error
 			}
 		}
 	}
 	return nil
 }
 
-// shouldExclude checks if a filename matches the exclude list.
-func (t *Tree) shouldExclude(name string) bool {
-	for _, ex := range t.exclude {
-		if ex == name {
+// there isEntryExcluded checks if the given name (file or directory) matches any of the configured exclude patterns.
+func (t *Tree) isEntryExcluded(name string) bool {
+	for _, pattern := range t.cfg.exclude {
+		// Using HasPrefix as per the original implicit logic for directories.
+		// This can be changed to exact match or glob matching if needed.
+		if strings.HasPrefix(name, pattern) {
 			return true
 		}
 	}

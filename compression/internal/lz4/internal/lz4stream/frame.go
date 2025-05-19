@@ -11,8 +11,6 @@ import (
 	"github.com/inovacc/toolkit/compression/internal/lz4/internal/xxh32"
 )
 
-//go:generate go run gen.go
-
 const (
 	frameMagic       uint32 = 0x184D2204
 	frameSkipMagic   uint32 = 0x184D2A50
