@@ -9,8 +9,8 @@ import (
 func TestSequence(t *testing.T) {
 	seq := Sequence{Seed: NewKSUID()}
 
-	if min, max := seq.Bounds(); min == max {
-		t.Error("min and max of KSUID range must differ when no ids have been generated")
+	if minValue, maxValue := seq.Bounds(); minValue == maxValue {
+		t.Error("minValue and maxValue of KSUID range must differ when no ids have been generated")
 	}
 
 	for i := 0; i <= math.MaxUint16; i++ {
@@ -27,7 +27,7 @@ func TestSequence(t *testing.T) {
 		t.Fatal("no error returned after exhausting the id generator")
 	}
 
-	if min, max := seq.Bounds(); min != max {
-		t.Error("after all KSUIDs were generated the min and max must be equal")
+	if minValue, maxValue := seq.Bounds(); minValue != maxValue {
+		t.Error("after all KSUIDs were generated the minValue and maxValue must be equal")
 	}
 }

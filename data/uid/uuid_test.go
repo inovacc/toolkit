@@ -114,7 +114,7 @@ func testTest(t *testing.T, in string, tt test) {
 
 func testBytes(t *testing.T, in []byte, tt test) {
 	uuid, err := ParseUUIDBytes(in)
-	if ok := (err == nil); ok != tt.isuuid {
+	if ok := err == nil; ok != tt.isuuid {
 		t.Errorf("ParseUUIDBytes(%s) got %v expected %v\b", in, ok, tt.isuuid)
 	}
 	if err != nil {

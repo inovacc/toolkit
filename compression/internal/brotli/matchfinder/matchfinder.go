@@ -68,7 +68,9 @@ func (w *Writer) Write(p []byte) (n int, err error) {
 	w.inBuf = append(w.inBuf, p...)
 	var pos int
 	for pos = 0; pos+w.BlockSize <= len(w.inBuf) && w.err == nil; pos += w.BlockSize {
-		w.writeBlock(w.inBuf[pos:pos+w.BlockSize], false)
+		if _, err := w.writeBlock(w.inBuf[pos:pos+w.BlockSize], false); err != nil {
+			return 0, err
+		}
 	}
 	if pos > 0 {
 		n := copy(w.inBuf, w.inBuf[pos:])
@@ -87,7 +89,9 @@ func (w *Writer) writeBlock(p []byte, lastBlock bool) (n int, err error) {
 }
 
 func (w *Writer) Close() error {
-	w.writeBlock(w.inBuf, true)
+	if _, err := w.writeBlock(w.inBuf, true); err != nil {
+		return err
+	}
 	w.inBuf = w.inBuf[:0]
 	return w.err
 }

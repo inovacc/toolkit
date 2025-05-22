@@ -23,20 +23,20 @@ const (
 )
 
 var (
-	timeMu   sync.Mutex
-	lasttime uint64 // last time we returned
-	clockSeq uint16 // clock sequence for this run
+	timeMu        sync.Mutex
+	lastTimeValue uint64 // last time we returned
+	clockSeq      uint16 // clock sequence for this run
 
 	timeNow = time.Now // for testing
 )
 
 // UnixTime converts t the number of seconds and nanoseconds using the Unix
 // epoch of 1 Jan 1970.
-func (t Time) UnixTime() (sec, nsec int64) {
+func (t Time) UnixTime() (sec, nanoseconds int64) {
 	sec = int64(t - g1582ns100)
-	nsec = (sec % 10000000) * 100
+	nanoseconds = (sec % 10000000) * 100
 	sec /= 10000000
-	return sec, nsec
+	return sec, nanoseconds
 }
 
 // GetTime returns the current Time (100s of nanoseconds since 15 Oct 1582) and
@@ -57,12 +57,12 @@ func getTime() (Time, uint16, error) {
 	}
 	now := uint64(t.UnixNano()/100) + g1582ns100
 
-	// If time has gone backwards with this clock sequence then we
+	// If time has gone backwards with this clock sequence, then we
 	// increment the clock sequence
-	if now <= lasttime {
+	if now <= lastTimeValue {
 		clockSeq = ((clockSeq + 1) & 0x3fff) | 0x8000
 	}
-	lasttime = now
+	lastTimeValue = now
 	return Time(now), clockSeq, nil
 }
 
@@ -103,7 +103,7 @@ func setClockSequence(seq int) {
 	oldSeq := clockSeq
 	clockSeq = uint16(seq&0x3fff) | 0x8000 // Set our variant
 	if oldSeq != clockSeq {
-		lasttime = 0
+		lastTimeValue = 0
 	}
 }
 
@@ -113,22 +113,22 @@ func (uuid UUID) Time() Time {
 	var t Time
 	switch uuid.Version() {
 	case 6:
-		time := binary.BigEndian.Uint64(uuid[:8]) // Ignore uuid[6] version b0110
-		t = Time(time)
+		timeValue := binary.BigEndian.Uint64(uuid[:8]) // Ignore uuid[6] version b0110
+		t = Time(timeValue)
 	case 7:
-		time := binary.BigEndian.Uint64(uuid[:8])
-		t = Time((time>>16)*10000 + g1582ns100)
+		timeValue := binary.BigEndian.Uint64(uuid[:8])
+		t = Time((timeValue>>16)*10000 + g1582ns100)
 	default: // forward compatible
-		time := int64(binary.BigEndian.Uint32(uuid[0:4]))
-		time |= int64(binary.BigEndian.Uint16(uuid[4:6])) << 32
-		time |= int64(binary.BigEndian.Uint16(uuid[6:8])&0xfff) << 48
-		t = Time(time)
+		uuidValue := int64(binary.BigEndian.Uint32(uuid[0:4]))
+		uuidValue |= int64(binary.BigEndian.Uint16(uuid[4:6])) << 32
+		uuidValue |= int64(binary.BigEndian.Uint16(uuid[6:8])&0xfff) << 48
+		t = Time(uuidValue)
 	}
 	return t
 }
 
 // ClockSequence returns the clock sequence encoded in uuid.
-// The clock sequence is only well defined for version 1 and 2 UUIDs.
+// The clock sequence is only well-defined for version 1 and 2 UUIDs.
 func (uuid UUID) ClockSequence() int {
 	return int(binary.BigEndian.Uint16(uuid[8:10])) & 0x3fff
 }

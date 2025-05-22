@@ -170,7 +170,7 @@ func NewRandomWithTime(t time.Time) (KSUID, error) {
 	defer randMutex.Unlock()
 
 	var id KSUID
-	if _, err := io.ReadAtLeast(randerUUID, randBuffer[:], len(randBuffer)); err != nil {
+	if _, err := io.ReadAtLeast(randerKSUID, randBuffer[:], len(randBuffer)); err != nil {
 		return NilKSUID, err
 	}
 

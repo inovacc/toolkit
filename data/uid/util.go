@@ -15,8 +15,8 @@ func randomBits(b []byte) {
 	}
 }
 
-// xvalues returns the value of a byte as a hexadecimal digit or 255.
-var xvalues = [256]byte{
+// valueMap returns the value of a byte as a hexadecimal digit or 255.
+var valueMap = [256]byte{
 	255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255,
 	255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255,
 	255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255,
@@ -35,9 +35,9 @@ var xvalues = [256]byte{
 	255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255,
 }
 
-// xtob converts hex characters x1 and x2 into a byte.
-func xtob(x1, x2 byte) (byte, bool) {
-	b1 := xvalues[x1]
-	b2 := xvalues[x2]
+// mergeByteValues converts hex characters x1 and x2 into a byte.
+func mergeByteValues(x1, x2 byte) (byte, bool) {
+	b1 := valueMap[x1]
+	b2 := valueMap[x2]
 	return (b1 << 4) | b2, b1 != 255 && b2 != 255
 }

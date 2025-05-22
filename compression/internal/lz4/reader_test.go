@@ -80,7 +80,11 @@ func TestReader(t *testing.T) {
 				if err != nil {
 					t.Fatal(err)
 				}
-				defer f.Close()
+				defer func(f *os.File) {
+					if err := f.Close(); err != nil {
+						t.Fatal(err)
+					}
+				}(f)
 
 				rawfile := strings.TrimSuffix(fname, ".lz4")
 				_raw, err := os.ReadFile(rawfile)
@@ -120,7 +124,11 @@ func TestReader(t *testing.T) {
 				if err != nil {
 					t.Fatal(err)
 				}
-				defer f2.Close()
+				defer func(f2 *os.File) {
+					if err := f2.Close(); err != nil {
+						t.Fatal(err)
+					}
+				}(f2)
 
 				out.Reset()
 				zr = lz4.NewReader(f2)
@@ -215,7 +223,11 @@ func TestReaderLegacy(t *testing.T) {
 				if err != nil {
 					t.Fatal(err)
 				}
-				defer f.Close()
+				defer func(f *os.File) {
+					if err := f.Close(); err != nil {
+						t.Fatal(err)
+					}
+				}(f)
 
 				zr := lz4.NewReader(f)
 				if err := zr.Apply(opts...); err != nil {
@@ -242,7 +254,11 @@ func TestReaderLegacy(t *testing.T) {
 				if err != nil {
 					t.Fatal(err)
 				}
-				defer f2.Close()
+				defer func(f2 *os.File) {
+					if err := f2.Close(); err != nil {
+						t.Fatal(err)
+					}
+				}(f2)
 
 				out.Reset()
 				zr = lz4.NewReader(f2)
@@ -274,7 +290,11 @@ func TestUncompressBadBlock(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	defer f.Close()
+	defer func(f *os.File) {
+		if err := f.Close(); err != nil {
+			t.Fatal(err)
+		}
+	}(f)
 	zr := lz4.NewReader(f)
 	if err := zr.Apply(lz4.ConcurrencyOption(4)); err != nil {
 		t.Fatal(err)

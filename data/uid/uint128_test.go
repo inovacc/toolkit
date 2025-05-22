@@ -6,7 +6,7 @@ import (
 )
 
 func TestCmp128(t *testing.T) {
-	tests := []struct {
+	testCases := []struct {
 		x uint128
 		y uint128
 		k int
@@ -38,17 +38,17 @@ func TestCmp128(t *testing.T) {
 		},
 	}
 
-	for _, test := range tests {
-		t.Run(fmt.Sprintf("cmp128(%s,%s)", test.x, test.y), func(t *testing.T) {
-			if k := cmp128(test.x, test.y); k != test.k {
-				t.Error(k, "!=", test.k)
+	for _, tc := range testCases {
+		t.Run(fmt.Sprintf("cmp128(%s,%s)", tc.x, tc.y), func(t *testing.T) {
+			if k := cmp128(tc.x, tc.y); k != tc.k {
+				t.Error(k, "!=", tc.k)
 			}
 		})
 	}
 }
 
 func TestAdd128(t *testing.T) {
-	tests := []struct {
+	testCases := []struct {
 		x uint128
 		y uint128
 		z uint128
@@ -85,17 +85,17 @@ func TestAdd128(t *testing.T) {
 		},
 	}
 
-	for _, test := range tests {
-		t.Run(fmt.Sprintf("add128(%s,%s)", test.x, test.y), func(t *testing.T) {
-			if z := add128(test.x, test.y); z != test.z {
-				t.Error(z, "!=", test.z)
+	for _, tc := range testCases {
+		t.Run(fmt.Sprintf("add128(%s,%s)", tc.x, tc.y), func(t *testing.T) {
+			if z := add128(tc.x, tc.y); z != tc.z {
+				t.Error(z, "!=", tc.z)
 			}
 		})
 	}
 }
 
 func TestSub128(t *testing.T) {
-	tests := []struct {
+	testCases := []struct {
 		x uint128
 		y uint128
 		z uint128
@@ -132,10 +132,10 @@ func TestSub128(t *testing.T) {
 		},
 	}
 
-	for _, test := range tests {
-		t.Run(fmt.Sprintf("sub128(%s,%s)", test.x, test.y), func(t *testing.T) {
-			if z := sub128(test.x, test.y); z != test.z {
-				t.Error(z, "!=", test.z)
+	for _, tc := range testCases {
+		t.Run(fmt.Sprintf("sub128(%s,%s)", tc.x, tc.y), func(t *testing.T) {
+			if z := sub128(tc.x, tc.y); z != tc.z {
+				t.Error(z, "!=", tc.z)
 			}
 		})
 	}

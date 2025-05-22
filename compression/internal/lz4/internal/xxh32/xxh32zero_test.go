@@ -113,7 +113,7 @@ func TestNil(t *testing.T) {
 	want := xxh32.ChecksumZero([]byte(""))
 
 	var xxh xxh32.XXHZero
-	xxh.Write(nil)
+	_, _ = xxh.Write(nil)
 	got := xxh.Sum32()
 	if got != want {
 		t.Errorf("got %x; want %x", got, want)
@@ -134,11 +134,11 @@ func TestUnaligned(t *testing.T) {
 	}
 
 	var xxh xxh32.XXHZero
-	xxh.Write(zeros[:len(zeros)-1])
+	_, _ = xxh.Write(zeros[:len(zeros)-1])
 	ha = xxh.Sum32()
 
 	xxh.Reset()
-	xxh.Write(zeros[1:])
+	_, _ = xxh.Write(zeros[1:])
 	hu = xxh32.ChecksumZero(zeros[1:])
 
 	if ha != hu {

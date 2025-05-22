@@ -86,7 +86,7 @@ func ParseUUID(s string) (UUID, error) {
 	case 32:
 		var ok bool
 		for i := range uuid {
-			uuid[i], ok = xtob(s[i*2], s[i*2+1])
+			uuid[i], ok = mergeByteValues(s[i*2], s[i*2+1])
 			if !ok {
 				return uuid, errors.New("invalid UUID format")
 			}
@@ -107,7 +107,7 @@ func ParseUUID(s string) (UUID, error) {
 		19, 21,
 		24, 26, 28, 30, 32, 34,
 	} {
-		v, ok := xtob(s[x], s[x+1])
+		v, ok := mergeByteValues(s[x], s[x+1])
 		if !ok {
 			return uuid, errors.New("invalid UUID format")
 		}
@@ -131,7 +131,7 @@ func ParseUUIDBytes(b []byte) (UUID, error) {
 	case 32: // xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
 		var ok bool
 		for i := 0; i < 32; i += 2 {
-			uuid[i/2], ok = xtob(b[i], b[i+1])
+			uuid[i/2], ok = mergeByteValues(b[i], b[i+1])
 			if !ok {
 				return uuid, errors.New("invalid UUID format")
 			}
@@ -152,7 +152,7 @@ func ParseUUIDBytes(b []byte) (UUID, error) {
 		19, 21,
 		24, 26, 28, 30, 32, 34,
 	} {
-		v, ok := xtob(b[x], b[x+1])
+		v, ok := mergeByteValues(b[x], b[x+1])
 		if !ok {
 			return uuid, errors.New("invalid UUID format")
 		}
@@ -216,7 +216,7 @@ func ValidateUUID(s string) error {
 	// UUID without hyphens
 	case 32:
 		for i := 0; i < len(s); i += 2 {
-			_, ok := xtob(s[i], s[i+1])
+			_, ok := mergeByteValues(s[i], s[i+1])
 			if !ok {
 				return errors.New("invalid UUID format")
 			}
@@ -232,7 +232,7 @@ func ValidateUUID(s string) error {
 			return errors.New("invalid UUID format")
 		}
 		for _, x := range []int{0, 2, 4, 6, 9, 11, 14, 16, 19, 21, 24, 26, 28, 30, 32, 34} {
-			if _, ok := xtob(s[x], s[x+1]); !ok {
+			if _, ok := mergeByteValues(s[x], s[x+1]); !ok {
 				return errors.New("invalid UUID format")
 			}
 		}

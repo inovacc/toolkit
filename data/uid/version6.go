@@ -6,7 +6,7 @@ package uid
 
 import "encoding/binary"
 
-// UUID version 6 is a field-compatible version of UUIDv1, reordered for improved DB locality.
+// NewV6 UUID version 6 is a field-compatible version of UUIDv1, reordered for improved DB locality.
 // It is expected that UUIDv6 will primarily be used in contexts where there are existing v1 UUIDs.
 // Systems that do not involve legacy UUIDv1 SHOULD consider using UUIDv7 instead.
 //

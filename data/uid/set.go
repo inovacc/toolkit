@@ -5,13 +5,13 @@ import (
 	"encoding/binary"
 )
 
-// CompressedSet is an immutable data type which stores a set of KSUIDs.
+// CompressedSet is an immutable data type that stores a set of KSUIDs.
 type CompressedSet []byte
 
 // Iter returns an iterator that produces all KSUIDs in the set.
 func (set CompressedSet) Iter() CompressedSetIter {
 	return CompressedSetIter{
-		content: []byte(set),
+		content: set,
 	}
 }
 
@@ -125,7 +125,7 @@ func AppendCompressed(set []byte, ids ...KSUID) CompressedSet {
 			lastValue = v
 		}
 	}
-	return CompressedSet(set)
+	return set
 }
 
 func rangeLength(ids []KSUID, timestamp uint32, lastKSUID KSUID, lastValue uint128) (length int, count int) {
@@ -245,7 +245,7 @@ const (
 // CompressedSetIter is an iterator type returned by Set.Iter to produce the
 // list of KSUIDs stored in a set.
 //
-// Here's is how the iterator type is commonly used:
+// Here is how the iterator type is commonly used:
 //
 //	for it := set.Iter(); it.Next(); {
 //		id := it.KSUID

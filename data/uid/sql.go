@@ -26,7 +26,7 @@ func (uuid *UUID) Scan(src interface{}) error {
 		// see ParseUUID for required string format
 		u, err := ParseUUID(src)
 		if err != nil {
-			return fmt.Errorf("Scan: %v", err)
+			return fmt.Errorf("scan: %v", err)
 		}
 
 		*uuid = u
@@ -38,14 +38,14 @@ func (uuid *UUID) Scan(src interface{}) error {
 		}
 
 		// assumes a simple slice of bytes if 16 bytes
-		// otherwise attempts to parse
+		// otherwise attempt to parse
 		if len(src) != 16 {
 			return uuid.Scan(string(src))
 		}
 		copy((*uuid)[:], src)
 
 	default:
-		return fmt.Errorf("Scan: unable to scan type %T into UUID", src)
+		return fmt.Errorf("scan: unable to scan type %T into UUID", src)
 	}
 
 	return nil

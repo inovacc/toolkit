@@ -11,7 +11,7 @@ import (
 	"time"
 )
 
-// This test is only run when --regressions is passed on the go test line.
+// This test is only run when --regressions are passed on the go test line.
 var regressions = flag.Bool("regressions", false, "run uuid regression tests")
 
 // TestClockSeqRace tests for a particular race condition of returning two

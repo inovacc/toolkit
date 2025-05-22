@@ -126,7 +126,7 @@ type Imager interface {
 	ToBase64() (string, error)
 	FromBase64(data string) error
 	Clone() *Image
-	GetFormat() Format
+	GetFormat(filename string) (Format, error)
 	GetSize() (width, height int)
 	GetAspectRatio() float64
 	GetMetadata() map[string]string
@@ -315,8 +315,8 @@ func (i *Image) ToGIF(imagePath string) error {
 	})
 }
 
-func (i *Image) GetFormat() Format {
-	return i.format
+func (i *Image) GetFormat(filename string) (Format, error) {
+	return i.getFormat(filename)
 }
 
 func (i *Image) Bytes() ([]byte, error) {

@@ -141,16 +141,28 @@ func TestIssue41(t *testing.T) {
 func TestIssue43(t *testing.T) {
 	r, w := io.Pipe()
 	go func() {
-		defer w.Close()
+		defer func(w *io.PipeWriter) {
+			if err := w.Close(); err != nil {
+				panic(err)
+			}
+		}(w)
 
 		f, err := os.Open("testdata/issue43.data")
 		if err != nil {
 			panic(err)
 		}
-		defer f.Close()
+		defer func(f *os.File) {
+			if err := f.Close(); err != nil {
+				panic(err)
+			}
+		}(f)
 
 		zw := lz4.NewWriter(w)
-		defer zw.Close()
+		defer func(zw *lz4.Writer) {
+			if err := zw.Close(); err != nil {
+				panic(err)
+			}
+		}(zw)
 
 		_, err = io.Copy(zw, f)
 		if err != nil {
@@ -335,7 +347,11 @@ func TestWriterLegacyCommand(t *testing.T) {
 			if err != nil {
 				t.Fatal(err)
 			}
-			defer os.Remove(tmp.Name())
+			defer func(name string) {
+				if err := os.Remove(name); err != nil {
+					t.Fatal(err)
+				}
+			}(tmp.Name())
 			if _, err := tmp.Write(out.Bytes()); err != nil {
 				t.Fatal(err)
 			}
