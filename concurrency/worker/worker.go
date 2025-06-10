@@ -32,7 +32,7 @@ func formatWithArgs(format string, a ...any) string {
 }
 
 // Workload defines the task a worker should perform.
-type Workload func(ctx context.Context, log Logger)
+type Workload func(ctx context.Context, log Logger, input <-chan any)
 
 // Worker defines the worker interface.
 type Worker interface {
@@ -49,14 +49,18 @@ type BaseWorker struct {
 	cancel   context.CancelFunc
 	running  sync.Once
 	stopped  sync.Once
+	inputCh  chan any
+	mu       sync.RWMutex
+	closed   bool
 }
 
 // NewBaseWorker creates a new worker with custom logger and workload.
-func NewBaseWorker(name string, logger Logger, workload Workload) *BaseWorker {
+func NewBaseWorker(name string, logger Logger, workload Workload, bufferSize int) *BaseWorker {
 	return &BaseWorker{
 		name:     name,
 		logger:   logger,
 		workload: workload,
+		inputCh:  make(chan any, bufferSize),
 	}
 }
 
@@ -68,19 +72,40 @@ func (w *BaseWorker) Start(ctx context.Context) {
 		go func() {
 			w.logger.Info("Worker %s started", w.name)
 			defer w.logger.Info("Worker %s stopped", w.name)
-			w.workload(runCtx, w.logger)
+			w.workload(runCtx, w.logger, w.inputCh)
 		}()
 	})
 }
 
 func (w *BaseWorker) Stop() {
 	w.stopped.Do(func() {
+		w.mu.Lock()
+		w.closed = true
+		w.mu.Unlock()
+
 		if w.cancel != nil {
 			w.cancel()
 		}
+		close(w.inputCh)
 	})
 }
 
 func (w *BaseWorker) Name() string {
 	return w.name
+}
+
+func (w *BaseWorker) Send(input any) error {
+	w.mu.RLock()
+	defer w.mu.RUnlock()
+
+	if w.closed {
+		return fmt.Errorf("worker %s input channel is closed", w.name)
+	}
+
+	select {
+	case w.inputCh <- input:
+		return nil
+	default:
+		return fmt.Errorf("worker %s input channel is full", w.name)
+	}
 }
