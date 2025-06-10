@@ -6,23 +6,25 @@ import (
 )
 
 func SelectOS() string {
-	o := "linux"
-	if runtime.GOOS == "windows" {
-		o = "windows"
-	} else if runtime.GOOS == "darwin" {
-		o = "macos"
+	switch runtime.GOOS {
+	case "windows":
+		return "windows"
+	case "darwin":
+		return "macos"
+	default:
+		return "linux"
 	}
-	return o
 }
 
 func SelectArch() string {
-	arch := "x86_64"
-	if runtime.GOARCH == "386" {
-		arch = "i386"
-	} else if runtime.GOARCH == "arm64" {
-		arch = "aarch64"
+	switch runtime.GOARCH {
+	case "386":
+		return "i386"
+	case "arm64":
+		return "aarch64"
+	default:
+		return "x86_64"
 	}
-	return arch
 }
 
 func HomeDirFromEnv() string {

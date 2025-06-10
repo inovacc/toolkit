@@ -12,7 +12,7 @@ func TestBase10ToBase62AndBack(t *testing.T) {
 	encoded := base2base(number, 10, 62)
 	decoded := base2base(encoded, 62, 10)
 
-	if bytes.Compare(number, decoded) != 0 {
+	if bytes.Equal(number, decoded) {
 		t.Fatal(number, " != ", decoded)
 	}
 }
@@ -22,7 +22,7 @@ func TestBase256ToBase62AndBack(t *testing.T) {
 	encoded := base2base(number, 256, 62)
 	decoded := base2base(encoded, 62, 256)
 
-	if bytes.Compare(number, decoded) != 0 {
+	if bytes.Equal(number, decoded) {
 		t.Fatal(number, " != ", decoded)
 	}
 }
@@ -37,7 +37,7 @@ func TestEncodeAndDecodeBase62(t *testing.T) {
 
 	}
 
-	if bytes.Compare(helloWorld, decoded) != 0 {
+	if bytes.Equal(helloWorld, decoded) {
 		t.Fatal(decoded, " != ", helloWorld)
 	}
 }
@@ -51,14 +51,13 @@ func TestLexographicOrdering(t *testing.T) {
 
 	if !sort.StringsAreSorted(unsortedStrings) {
 		sortedStrings := make([]string, len(unsortedStrings))
-		for i, s := range unsortedStrings {
-			sortedStrings[i] = s
-		}
+		// for i, s := range unsortedStrings {
+		// 	sortedStrings[i] = s
+		// }
+		copy(sortedStrings, unsortedStrings)
 		sort.Strings(sortedStrings)
 
-		t.Fatal("base62 encoder does not produce lexographically sorted output.",
-			"expected:", sortedStrings,
-			"actual:", unsortedStrings)
+		t.Fatal("base62 encoder does not produce lexographically sorted output.", "expected:", sortedStrings, "actual:", unsortedStrings)
 	}
 }
 
@@ -149,7 +148,7 @@ func BenchmarkAppendFastDecodeBase62(b *testing.B) {
 	}
 }
 
-// The functions bellow were the initial implementation of the base conversion
+// The functions below were the initial implementation of the base conversion
 // algorithms, they were replaced by optimized versions later on. We keep them
 // in the test files as a reference to ensure compatibility between the generic
 // and optimized implementations.

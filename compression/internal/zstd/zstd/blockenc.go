@@ -438,42 +438,42 @@ func (b *blockEnc) encodeRLE(val byte, length uint32) {
 	b.output = append(b.output, val)
 }
 
-// fuzzFseEncoder can be used to fuzz the FSE encoder.
-func fuzzFseEncoder(data []byte) int {
-	if len(data) > maxSequences || len(data) < 2 {
-		return 0
-	}
-	enc := fseEncoder{}
-	hist := enc.Histogram()
-	maxSym := uint8(0)
-	for i, v := range data {
-		v = v & 63
-		data[i] = v
-		hist[v]++
-		if v > maxSym {
-			maxSym = v
-		}
-	}
-	if maxSym == 0 {
-		// All 0
-		return 0
-	}
-	cnt := int(slices.Max(hist[:maxSym]))
-	if cnt == len(data) {
-		// RLE
-		return 0
-	}
-	enc.HistogramFinished(maxSym, cnt)
-	err := enc.normalizeCount(len(data))
-	if err != nil {
-		return 0
-	}
-	_, err = enc.writeCount(nil)
-	if err != nil {
-		panic(err)
-	}
-	return 1
-}
+// // fuzzFseEncoder can be used to fuzz the FSE encoder.
+// func fuzzFseEncoder(data []byte) int {
+// 	if len(data) > maxSequences || len(data) < 2 {
+// 		return 0
+// 	}
+// 	enc := fseEncoder{}
+// 	hist := enc.Histogram()
+// 	maxSym := uint8(0)
+// 	for i, v := range data {
+// 		v = v & 63
+// 		data[i] = v
+// 		hist[v]++
+// 		if v > maxSym {
+// 			maxSym = v
+// 		}
+// 	}
+// 	if maxSym == 0 {
+// 		// All 0
+// 		return 0
+// 	}
+// 	cnt := int(slices.Max(hist[:maxSym]))
+// 	if cnt == len(data) {
+// 		// RLE
+// 		return 0
+// 	}
+// 	enc.HistogramFinished(maxSym, cnt)
+// 	err := enc.normalizeCount(len(data))
+// 	if err != nil {
+// 		return 0
+// 	}
+// 	_, err = enc.writeCount(nil)
+// 	if err != nil {
+// 		panic(err)
+// 	}
+// 	return 1
+// }
 
 // encode will encode the block and append the output in b.output.
 // Previous offset codes must be pushed if more blocks are expected.

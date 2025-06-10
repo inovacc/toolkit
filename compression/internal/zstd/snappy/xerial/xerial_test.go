@@ -2,6 +2,7 @@ package xerial
 
 import (
 	"bytes"
+	"errors"
 	"math/rand"
 	"testing"
 
@@ -105,7 +106,7 @@ func TestSnappyMasterDecodeFailed(t *testing.T) {
 	buf[len(buf)-2] = 1
 	// A payload which will not decode
 	buf[len(buf)-1] = 1
-	if _, err := Decode(buf); err == ErrMalformed || err == nil {
+	if _, err := Decode(buf); errors.Is(err, ErrMalformed) || err == nil {
 		t.Errorf("unexpected err: %v", err)
 	}
 }
@@ -115,15 +116,15 @@ func BenchmarkSnappyStreamDecode(b *testing.B) {
 	b.ResetTimer()
 
 	for n := 0; n < b.N; n++ {
-		bytes := 0
+		outputSize := 0
 		for _, test := range snappyStreamTestCases {
 			dst, err := Decode(test)
 			if err != nil {
 				b.Error("Decoding error: ", err)
 			}
-			bytes += len(dst)
+			outputSize += len(dst)
 		}
-		b.SetBytes(int64(bytes))
+		b.SetBytes(int64(outputSize))
 	}
 }
 
@@ -132,20 +133,20 @@ func BenchmarkSnappyStreamDecodeInto(b *testing.B) {
 	b.ResetTimer()
 
 	var (
-		dst = make([]byte, 1024, 1024)
+		dst = make([]byte, 1024)
 		err error
 	)
 
 	for n := 0; n < b.N; n++ {
-		bytes := 0
+		outputSize := 0
 		for _, test := range snappyStreamTestCases {
 			dst, err = DecodeInto(dst, test)
 			if err != nil {
 				b.Error("Decoding error: ", err)
 			}
-			bytes += len(dst)
+			outputSize += len(dst)
 		}
-		b.SetBytes(int64(bytes))
+		b.SetBytes(int64(outputSize))
 	}
 }
 func BenchmarkSnappyStreamDecodeMassive(b *testing.B) {
@@ -190,7 +191,7 @@ func BenchmarkSnappyStreamEncode(b *testing.B) {
 
 	var (
 		dst = make([]byte, 0, 20+s2.MaxEncodedLen(len(test)))
-		err error
+		// err error
 	)
 
 	b.ReportAllocs()
@@ -199,9 +200,9 @@ func BenchmarkSnappyStreamEncode(b *testing.B) {
 
 	for n := 0; n < b.N; n++ {
 		dst = Encode(dst[:0], test)
-		if err != nil {
-			b.Error("Encoding error: ", err)
-		}
+		// if err != nil {
+		// 	b.Error("Encoding error: ", err)
+		// }
 	}
 }
 
@@ -210,7 +211,7 @@ func BenchmarkSnappyStreamEncodeBetter(b *testing.B) {
 
 	var (
 		dst = make([]byte, 0, 20+s2.MaxEncodedLen(len(test)))
-		err error
+		// err error
 	)
 
 	b.ReportAllocs()
@@ -219,9 +220,9 @@ func BenchmarkSnappyStreamEncodeBetter(b *testing.B) {
 
 	for n := 0; n < b.N; n++ {
 		dst = EncodeBetter(dst[:0], test)
-		if err != nil {
-			b.Error("Encoding error: ", err)
-		}
+		// if err != nil {
+		// 	b.Error("Encoding error: ", err)
+		// }
 	}
 }
 
@@ -235,7 +236,7 @@ func BenchmarkSnappyStreamEncodeMassive(b *testing.B) {
 	}
 	var (
 		dst = make([]byte, 0, s2.MaxEncodedLen(len(massiveString)))
-		err error
+		// err error
 	)
 
 	b.ReportAllocs()
@@ -244,9 +245,9 @@ func BenchmarkSnappyStreamEncodeMassive(b *testing.B) {
 
 	for n := 0; n < b.N; n++ {
 		dst = Encode(dst[:0], massiveString)
-		if err != nil {
-			b.Error("Encoding error: ", err)
-		}
+		// if err != nil {
+		// 	b.Error("Encoding error: ", err)
+		// }
 	}
 }
 
@@ -260,7 +261,7 @@ func BenchmarkSnappyStreamEncodeBetterMassive(b *testing.B) {
 	}
 	var (
 		dst = make([]byte, 0, s2.MaxEncodedLen(len(massiveString)))
-		err error
+		// err error
 	)
 
 	b.ReportAllocs()
@@ -269,8 +270,8 @@ func BenchmarkSnappyStreamEncodeBetterMassive(b *testing.B) {
 
 	for n := 0; n < b.N; n++ {
 		dst = EncodeBetter(dst[:0], massiveString)
-		if err != nil {
-			b.Error("Encoding error: ", err)
-		}
+		// if err != nil {
+		// 	b.Error("Encoding error: ", err)
+		// }
 	}
 }

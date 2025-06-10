@@ -3,9 +3,13 @@ package compression
 import (
 	"bytes"
 	"testing"
+
+	"github.com/inovacc/toolkit/testutil"
 )
 
 func TestNewCompress(t *testing.T) {
+	defer testutil.MeasureTestPerformance(t)()
+
 	v := NewCompress(TypeZip)
 	b1, err := v.Compress([]byte("test"))
 	if err != nil {

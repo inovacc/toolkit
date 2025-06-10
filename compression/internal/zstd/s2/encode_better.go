@@ -18,12 +18,12 @@ func hash4(u uint64, h uint8) uint32 {
 	return (uint32(u) * prime4bytes) >> ((32 - h) & 31)
 }
 
-// hash5 returns the hash of the lowest 5 bytes of u to fit in a hash table with h bits.
-// Preferably h should be a constant and should always be <64.
-func hash5(u uint64, h uint8) uint32 {
-	const prime5bytes = 889523592379
-	return uint32(((u << (64 - 40)) * prime5bytes) >> ((64 - h) & 63))
-}
+// // hash5 returns the hash of the lowest 5 bytes of u to fit in a hash table with h bits.
+// // Preferably h should be a constant and should always be <64.
+// func hash5(u uint64, h uint8) uint32 {
+// 	const prime5bytes = 889523592379
+// 	return uint32(((u << (64 - 40)) * prime5bytes) >> ((64 - h) & 63))
+// }
 
 // hash7 returns the hash of the lowest 7 bytes of u to fit in a hash table with h bits.
 // Preferably h should be a constant and should always be <64.

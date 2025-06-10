@@ -5,7 +5,6 @@ import (
 	"crypto/sha256"
 	"encoding/binary"
 	"encoding/gob"
-	"encoding/json"
 	"errors"
 	"fmt"
 	"io"
@@ -109,7 +108,11 @@ func (s *Split) MergeFile(inDir string) error {
 	if err != nil {
 		return err
 	}
-	defer outFile.Close()
+	defer func(outFile *os.File) {
+		if err := outFile.Close(); err != nil {
+			fmt.Printf("Error closing file: %v\n", err)
+		}
+	}(outFile)
 
 	hash := sha256.New()
 
@@ -121,16 +124,22 @@ func (s *Split) MergeFile(inDir string) error {
 
 		if chunk.first {
 			if _, err := f.Seek(int64(binary.Size(meta)), io.SeekStart); err != nil {
-				f.Close()
+				if err := f.Close(); err != nil {
+					return err
+				}
 				return err
 			}
 		}
 
 		if _, err := io.Copy(outFile, io.TeeReader(f, hash)); err != nil {
-			f.Close()
+			if err := f.Close(); err != nil {
+				return err
+			}
 			return err
 		}
-		f.Close()
+		if err := f.Close(); err != nil {
+			return err
+		}
 	}
 
 	if !bytes.Equal(hash.Sum(nil), meta.Hash[:]) {
@@ -194,35 +203,35 @@ func (s *Split) MergeData(a []any, v any) error {
 	return gob.NewDecoder(bytes.NewReader(combined)).Decode(v)
 }
 
-func (s *Split) encodeFormat(v any, format string) ([]byte, error) {
-	var buf bytes.Buffer
-	switch strings.ToLower(format) {
-	case "gob":
-		if err := gob.NewEncoder(&buf).Encode(v); err != nil {
-			return nil, err
-		}
-	case "json":
-		data, err := json.Marshal(v)
-		if err != nil {
-			return nil, err
-		}
-		buf.Write(data)
-	default:
-		return nil, fmt.Errorf("unsupported format: %s", format)
-	}
-	return buf.Bytes(), nil
-}
-
-func (s *Split) decodeFormat(data []byte, v any, format string) error {
-	switch strings.ToLower(format) {
-	case "gob":
-		return gob.NewDecoder(bytes.NewReader(data)).Decode(v)
-	case "json":
-		return json.Unmarshal(data, v)
-	default:
-		return fmt.Errorf("unsupported format: %s", format)
-	}
-}
+// func (s *Split) encodeFormat(v any, format string) ([]byte, error) {
+// 	var buf bytes.Buffer
+// 	switch strings.ToLower(format) {
+// 	case "gob":
+// 		if err := gob.NewEncoder(&buf).Encode(v); err != nil {
+// 			return nil, err
+// 		}
+// 	case "json":
+// 		data, err := json.Marshal(v)
+// 		if err != nil {
+// 			return nil, err
+// 		}
+// 		buf.Write(data)
+// 	default:
+// 		return nil, fmt.Errorf("unsupported format: %s", format)
+// 	}
+// 	return buf.Bytes(), nil
+// }
+//
+// func (s *Split) decodeFormat(data []byte, v any, format string) error {
+// 	switch strings.ToLower(format) {
+// 	case "gob":
+// 		return gob.NewDecoder(bytes.NewReader(data)).Decode(v)
+// 	case "json":
+// 		return json.Unmarshal(data, v)
+// 	default:
+// 		return fmt.Errorf("unsupported format: %s", format)
+// 	}
+// }
 
 type parsedChunk struct {
 	first bool
@@ -235,14 +244,22 @@ func (s *Split) injectMetadata(chunkPath string, meta *metadata) error {
 	if err != nil {
 		return err
 	}
-	defer src.Close()
+	defer func(src *os.File) {
+		if err := src.Close(); err != nil {
+			fmt.Printf("Error closing file: %v\n", err)
+		}
+	}(src)
 
 	dstName := strings.Replace(chunkPath, "tmp", "part", 1)
 	dst, err := os.Create(dstName)
 	if err != nil {
 		return err
 	}
-	defer dst.Close()
+	defer func(dst *os.File) {
+		if err := dst.Close(); err != nil {
+			fmt.Printf("Error closing file: %v\n", err)
+		}
+	}(dst)
 
 	buf := new(bytes.Buffer)
 	if err := binary.Write(buf, binary.BigEndian, meta); err != nil {
@@ -265,7 +282,11 @@ func (s *Split) extractMetadata(filePath string, meta *metadata) error {
 	if err != nil {
 		return err
 	}
-	defer f.Close()
+	defer func(f *os.File) {
+		if err := f.Close(); err != nil {
+			fmt.Printf("Error closing file: %v\n", err)
+		}
+	}(f)
 
 	return binary.Read(f, binary.BigEndian, meta)
 }

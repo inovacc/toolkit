@@ -33,7 +33,7 @@ const (
 // fseDecoder provides temporary storage for compression and decompression.
 type fseDecoder struct {
 	dt             [maxTablesize]decSymbol // Decompression table.
-	symbolLen      uint16                  // Length of active part of the symbol table.
+	symbolLen      uint16                  // Length of the active part of the symbol table.
 	actualTableLog uint8                   // Selected tablelog.
 	maxBits        uint8                   // Maximum number of additional bits
 
@@ -117,10 +117,10 @@ func (s *fseDecoder) readNCount(b *byteReader, maxSymbol uint16) error {
 			}
 		}
 
-		max := (2*threshold - 1) - remaining
+		computedValue := (2*threshold - 1) - remaining
 		var count int32
 
-		if int32(bitStream)&(threshold-1) < max {
+		if int32(bitStream)&(threshold-1) < computedValue {
 			count = int32(bitStream) & (threshold - 1)
 			if debugAsserts && nbBits < 1 {
 				panic("nbBits underflow")
@@ -129,7 +129,7 @@ func (s *fseDecoder) readNCount(b *byteReader, maxSymbol uint16) error {
 		} else {
 			count = int32(bitStream) & (2*threshold - 1)
 			if count >= threshold {
-				count -= max
+				count -= computedValue
 			}
 			bitCount += nbBits
 		}
@@ -302,6 +302,6 @@ func (s *fseState) init(br *bitReader, tableLog uint8, dt []decSymbol) {
 }
 
 // final returns the current state symbol without decoding the next.
-func (s decSymbol) final() (int, uint8) {
-	return s.baselineInt(), s.addBits()
+func (d decSymbol) final() (int, uint8) {
+	return d.baselineInt(), d.addBits()
 }

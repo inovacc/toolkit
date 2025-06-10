@@ -6,5 +6,5 @@ tasks:
   test:
     cmds:
       - golangci-lint fmt
-      - go test -race -p=1 ./... -v
       - golangci-lint run ./...
+      - go test -race -p=1 ./... -v

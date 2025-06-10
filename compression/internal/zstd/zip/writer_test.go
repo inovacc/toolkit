@@ -7,12 +7,12 @@ package zip
 import (
 	"bytes"
 	"compress/flate"
+	"crypto/rand"
 	"encoding/binary"
 	"fmt"
 	"hash/crc32"
 	"io"
 	"io/fs"
-	"math/rand"
 	"os"
 	"strings"
 	"testing"
@@ -218,7 +218,9 @@ func TestWriterUTF8(t *testing.T) {
 		if err != nil {
 			t.Fatal(err)
 		}
-		w.Write([]byte{})
+		if _, err = w.Write([]byte{}); err != nil {
+			return
+		}
 	}
 
 	if err := w.Close(); err != nil {
@@ -637,9 +639,13 @@ func BenchmarkCompressedZipGarbage(b *testing.B) {
 				Name:   "foo",
 				Method: Deflate,
 			})
-			w.Write(bigBuf)
+			if _, err := w.Write(bigBuf); err != nil {
+				return
+			}
 		}
-		zw.Close()
+		if err := zw.Close(); err != nil {
+			return
+		}
 	}
 
 	b.ReportAllocs()

@@ -170,7 +170,7 @@ func TestMarshalBinary(t *testing.T) {
 
 	if b, err := id2.MarshalBinary(); err != nil {
 		t.Fatal(err)
-	} else if bytes.Compare(b, id1.Bytes()) != 0 {
+	} else if bytes.Equal(b, id1.Bytes()) {
 		t.Fatal("bad binary form:", id2)
 	}
 }

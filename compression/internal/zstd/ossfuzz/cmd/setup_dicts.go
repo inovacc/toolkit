@@ -58,7 +58,9 @@ func init() {
 	if err != nil {
 		panic(err)
 	}
-	f.Close()
+	if err := f.Close(); err != nil {
+		return
+	}
 }
 
 func getFuzzDicts(path string) []string {
@@ -80,7 +82,11 @@ func getFuzzDicts(path string) []string {
 			if err != nil {
 				panic(err)
 			}
-			defer r.Close()
+			defer func(r io.ReadCloser) {
+				if err := r.Close(); err != nil {
+					panic(err)
+				}
+			}(r)
 			in, err := io.ReadAll(r)
 			if err != nil {
 				panic(err)
@@ -91,9 +97,9 @@ func getFuzzDicts(path string) []string {
 	stringDicts := make([]string, 0)
 	for _, d := range dicts {
 		stringedArray := fmt.Sprintf("%v", d)
-		withComma := strings.Replace(stringedArray, " ", ", ", -1)
-		withClosingBracket := strings.Replace(withComma, "]", "}", -1)
-		withOpenBracket := strings.Replace(withClosingBracket, "[", "[]byte{", -1)
+		withComma := strings.ReplaceAll(stringedArray, " ", ", ")
+		withClosingBracket := strings.ReplaceAll(withComma, "]", "}")
+		withOpenBracket := strings.ReplaceAll(withClosingBracket, "[", "[]byte{")
 		stringDicts = append(stringDicts, withOpenBracket)
 	}
 	return stringDicts

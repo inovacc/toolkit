@@ -579,7 +579,9 @@ func FuzzParse(f *testing.F) {
 		f.Add(strings.ToUpper(tt.in))
 	}
 	f.Fuzz(func(t *testing.T, in string) {
-		ParseUUID(in)
+		if _, err := ParseUUID(in); err != nil {
+			return
+		}
 	})
 }
 
@@ -588,7 +590,9 @@ func FuzzParseBytes(f *testing.F) {
 		f.Add([]byte(tt.in))
 	}
 	f.Fuzz(func(t *testing.T, in []byte) {
-		ParseUUIDBytes(in)
+		if _, err := ParseUUIDBytes(in); err != nil {
+			return
+		}
 	})
 }
 
@@ -602,7 +606,9 @@ func FuzzFromBytes(f *testing.F) {
 		0x5f, 0xfd, 0xce, 0x74, 0xfa, 0xd2,
 	})
 	f.Fuzz(func(t *testing.T, in []byte) {
-		FromUUIDBytes(in)
+		if _, err := FromUUIDBytes(in); err != nil {
+			return
+		}
 	})
 }
 
@@ -685,7 +691,9 @@ func BenchmarkParseBytesCopy(b *testing.B) {
 
 func BenchmarkNew(b *testing.B) {
 	for i := 0; i < b.N; i++ {
-		NewUUID()
+		if _, err := NewUUID(); err != nil {
+			return
+		}
 	}
 }
 
@@ -900,7 +908,7 @@ func TestVersion7Monotonicity(t *testing.T) {
 type fakeRand struct{}
 
 func (g fakeRand) Read(bs []byte) (int, error) {
-	for i, _ := range bs {
+	for i := range bs {
 		bs[i] = 0x88
 	}
 	return len(bs), nil

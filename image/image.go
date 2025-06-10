@@ -698,20 +698,20 @@ func (i *Image) encode(w io.Writer) error {
 	}
 }
 
-func (i *Image) decode(file *os.File, format Format) error {
-	var err error
-	switch format {
-	case FormatJPEG, FormatJPG:
-		i.img, err = jpeg.Decode(file)
-	case FormatPNG:
-		i.img, err = png.Decode(file)
-	case FormatGIF:
-		i.img, err = gif.Decode(file)
-	default:
-		return fmt.Errorf("%w: %s", ErrUnsupportedFormat, format)
-	}
-	return err
-}
+// func (i *Image) decode(file *os.File, format Format) error {
+// 	var err error
+// 	switch format {
+// 	case FormatJPEG, FormatJPG:
+// 		i.img, err = jpeg.Decode(file)
+// 	case FormatPNG:
+// 		i.img, err = png.Decode(file)
+// 	case FormatGIF:
+// 		i.img, err = gif.Decode(file)
+// 	default:
+// 		return fmt.Errorf("%w: %s", ErrUnsupportedFormat, format)
+// 	}
+// 	return err
+// }
 
 func (i *Image) load() error {
 	imgFile, err := os.Open(i.imagePath)

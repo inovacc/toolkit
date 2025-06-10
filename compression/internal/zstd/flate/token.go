@@ -347,8 +347,8 @@ func (t *tokens) FromVarInt(b []byte) error {
 	return nil
 }
 
-// Returns the type of a token
-func (t token) typ() uint32 { return uint32(t) & typeMask }
+// // Returns the type of token
+// func (t token) typ() uint32 { return uint32(t) & typeMask }
 
 // Returns the literal of a literal token
 func (t token) literal() uint8 { return uint8(t) }

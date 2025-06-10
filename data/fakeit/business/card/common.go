@@ -117,22 +117,22 @@ func formatNumber(number string) string {
 	return strings.Join(parts, " ")
 }
 
-func cardBrand(number string) string {
-	number = strings.ReplaceAll(number, " ", "")
-	switch {
-	case strings.HasPrefix(number, "4"):
-		return "Visa"
-	case strings.HasPrefix(number, "34"), strings.HasPrefix(number, "37"):
-		return "American Express"
-	case strings.HasPrefix(number, "5"):
-		return "Mastercard"
-	case strings.HasPrefix(number, "6011"), strings.HasPrefix(number, "65"):
-		return "Discover"
-	case strings.HasPrefix(number, "35"):
-		return "JCB"
-	case strings.HasPrefix(number, "30"), strings.HasPrefix(number, "36"), strings.HasPrefix(number, "38"):
-		return "Diners Club"
-	default:
-		return "Unknown"
-	}
-}
+// func cardBrand(number string) string {
+// 	number = strings.ReplaceAll(number, " ", "")
+// 	switch {
+// 	case strings.HasPrefix(number, "4"):
+// 		return "Visa"
+// 	case strings.HasPrefix(number, "34"), strings.HasPrefix(number, "37"):
+// 		return "American Express"
+// 	case strings.HasPrefix(number, "5"):
+// 		return "Mastercard"
+// 	case strings.HasPrefix(number, "6011"), strings.HasPrefix(number, "65"):
+// 		return "Discover"
+// 	case strings.HasPrefix(number, "35"):
+// 		return "JCB"
+// 	case strings.HasPrefix(number, "30"), strings.HasPrefix(number, "36"), strings.HasPrefix(number, "38"):
+// 		return "Diners Club"
+// 	default:
+// 		return "Unknown"
+// 	}
+// }

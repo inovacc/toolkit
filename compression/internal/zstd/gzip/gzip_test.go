@@ -7,9 +7,11 @@ package gzip
 import (
 	"bufio"
 	"bytes"
+	"crypto/rand"
 	"fmt"
 	"io"
-	"math/rand"
+	"math/big"
+	mrand "math/rand"
 	"os"
 	"strconv"
 	"strings"
@@ -186,7 +188,7 @@ func TestWriterFlush(t *testing.T) {
 		t.Fatal("no data after first flush")
 	}
 
-	w.Write([]byte("x"))
+	_, _ = w.Write([]byte("x"))
 
 	n2 := buf.Len()
 	if n1 != n2 {
@@ -207,11 +209,15 @@ func TestWriterFlush(t *testing.T) {
 func TestConcat(t *testing.T) {
 	var buf bytes.Buffer
 	w := NewWriter(&buf)
-	w.Write([]byte("hello "))
-	w.Close()
+	_, _ = w.Write([]byte("hello "))
+	if err := w.Close(); err != nil {
+		return
+	}
 	w = NewWriter(&buf)
-	w.Write([]byte("world\n"))
-	w.Close()
+	_, _ = w.Write([]byte("world\n"))
+	if err := w.Close(); err != nil {
+		return
+	}
 
 	r, err := NewReader(&buf)
 	if err != nil {
@@ -228,11 +234,15 @@ func TestWriterReset(t *testing.T) {
 	buf2 := new(bytes.Buffer)
 	z := NewWriter(buf)
 	msg := []byte("hello world")
-	z.Write(msg)
-	z.Close()
+	_, _ = z.Write(msg)
+	if err := z.Close(); err != nil {
+		return
+	}
 	z.Reset(buf2)
-	z.Write(msg)
-	z.Close()
+	_, _ = z.Write(msg)
+	if err := z.Close(); err != nil {
+		return
+	}
 	if buf.String() != buf2.String() {
 		t.Errorf("buf2 %q != original buf of %q", buf2.String(), buf.String())
 	}
@@ -363,10 +373,13 @@ func testFileWindow(i, window int, t *testing.T) {
 func testBigGzip(i int, t *testing.T) {
 	if len(testbuf) != i {
 		// Make results predictable
-		rand.Seed(1337)
 		testbuf = make([]byte, i)
 		for idx := range testbuf {
-			testbuf[idx] = byte(65 + rand.Intn(20))
+			n, err := rand.Int(rand.Reader, big.NewInt(20)) // generate number in [0, 19]
+			if err != nil {
+				panic(err)
+			}
+			testbuf[idx] = byte(65 + n.Int64())
 		}
 	}
 	c := BestCompression
@@ -441,10 +454,10 @@ func testDeterm(level int, t *testing.T) {
 	if testing.Short() {
 		length = 100000
 	}
-	rand.Seed(1337)
+	mrand.Seed(1337)
 	t1 := make([]byte, length)
 	for idx := range t1 {
-		t1[idx] = byte(65 + rand.Intn(8))
+		t1[idx] = byte(65 + mrand.Intn(8))
 	}
 
 	br := bytes.NewBuffer(t1)
@@ -457,15 +470,20 @@ func testDeterm(level int, t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	w.Flush()
-	w.Close()
+	if err := w.Flush(); err != nil {
+		return
+	}
+
+	if err := w.Close(); err != nil {
+		return
+	}
 
 	// We recreate the buffer, so we have a goos chance of getting a
 	// different memory address.
-	rand.Seed(1337)
+	mrand.Seed(1337)
 	t2 := make([]byte, length)
 	for idx := range t2 {
-		t2[idx] = byte(65 + rand.Intn(8))
+		t2[idx] = byte(65 + mrand.Intn(8))
 	}
 
 	br2 := bytes.NewBuffer(t2)
@@ -489,9 +507,13 @@ func testDeterm(level int, t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	w2.Flush()
-	w2.Close()
+	if err := w2.Flush(); err != nil {
+		return
+	}
 
+	if err := w2.Close(); err != nil {
+		return
+	}
 	b1b := b1.Bytes()
 	b2b := b2.Bytes()
 
@@ -590,8 +612,10 @@ func BenchmarkCompressAllocations(b *testing.B) {
 					if err != nil {
 						b.Fatal(err)
 					}
-					w.Write(payload)
-					w.Close()
+					_, _ = w.Write(payload)
+					if err := w.Close(); err != nil {
+						return
+					}
 				}
 			})
 		})
@@ -610,8 +634,10 @@ func BenchmarkCompressAllocationsSingle(b *testing.B) {
 			if err != nil {
 				b.Fatal(err)
 			}
-			w.Write(payload)
-			w.Close()
+			_, _ = w.Write(payload)
+			if err := w.Close(); err != nil {
+				return
+			}
 		}
 	})
 }
